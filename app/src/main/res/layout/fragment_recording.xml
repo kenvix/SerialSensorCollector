@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        xmlns:tools="http://schemas.android.com/tools"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        tools:context="com.kenvix.sensorcollector.RecorderFragment"
+        android:orientation="vertical">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="70dp"
+            android:padding="8dp">
+
+        <Button
+                android:id="@+id/button_scan_serial"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/scan_serial"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintHorizontal_bias="0.057"
+                android:layout_marginTop="2dp" />
+
+        <Button
+                android:id="@+id/button_start_recoding"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/start_recoding"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintHorizontal_bias="0.953"
+                android:layout_marginTop="2dp"
+                android:layout_marginEnd="8dp" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <TextView
+            android:layout_height="42dp"
+            android:paddingStart="15dp"
+            android:paddingEnd="8dp"
+            android:textSize="22sp"
+            android:text="@string/text_list_of_sensors"
+            android:layout_width="wrap_content" />
+
+    <ListView
+            android:id="@+id/serial_list"
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent">
+
+    </ListView>
+</LinearLayout>
