@@ -12,6 +12,9 @@ import androidx.navigation.ui.setupActionBarWithNavController
 import com.felhr.usbserial.UsbSerialDevice
 import com.google.android.material.snackbar.Snackbar
 import com.kenvix.sensorcollector.databinding.ActivityMainBinding
+import com.kenvix.sensorcollector.hardware.vendor.SensorDataParser
+import com.kenvix.sensorcollector.hardware.vendor.WitHardwareDataParser
+import com.kenvix.sensorcollector.utils.ExcelRecordWriter
 import com.kenvix.sensorcollector.utils.UsbSerial
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
@@ -27,6 +30,9 @@ class MainActivity :
     private lateinit var binding: ActivityMainBinding
     internal val serialFinder: SerialPortFinder by lazy { SerialPortFinder() }
     internal lateinit var usbSerial: UsbSerial
+
+    internal lateinit var writer: ExcelRecordWriter
+    internal val dataParser : SensorDataParser = WitHardwareDataParser()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

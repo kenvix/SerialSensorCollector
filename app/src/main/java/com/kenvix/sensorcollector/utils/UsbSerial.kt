@@ -19,17 +19,34 @@ import android.hardware.usb.UsbManager
 import com.felhr.usbserial.UsbSerialDevice
 import com.felhr.usbserial.UsbSerialInterface.UsbReadCallback
 import com.felhr.utils.ProtocolBuffer
+import com.kenvix.sensorcollector.hardware.vendor.SensorData
+import com.kenvix.sensorcollector.hardware.vendor.SensorDataParser
 import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.CoroutineName
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.io.BufferedInputStream
+import java.io.DataInputStream
 import kotlin.coroutines.resume
 
 
-class UsbSerial(private val context: Context) {
+class UsbSerial(private val context: Context) : AutoCloseable,
+    CoroutineScope by CoroutineScope(CoroutineName("UsbSerial")) {
     private val usbManager: UsbManager = context.getSystemService(Context.USB_SERVICE) as UsbManager
     private var permissionContinuation: CancellableContinuation<Boolean>? = null
     private val opMutex = Mutex()
+    val openedSerialDevices: MutableMap<UsbDevice, Pair<UsbSerialDevice, Deferred<Unit>>> =
+        mutableMapOf()
 
     companion object Utils {
         private const val ACTION_USB_PERMISSION = "com.kenvix.sensorcollector.USB_PERMISSION"
@@ -50,24 +67,51 @@ class UsbSerial(private val context: Context) {
         }
     }
 
-    fun startReceiving(device: UsbDevice) {
+    fun startReceiving(
+        device: UsbDevice,
+        dataParser: SensorDataParser,
+        delimiter: Byte,
+        onReceived: (UsbDevice, UsbSerialDevice, SensorData) -> Unit
+    ): Deferred<Unit> {
         val usbConnection: UsbDeviceConnection = usbManager.openDevice(device)
-        val buffer = ProtocolBuffer(ProtocolBuffer.TEXT, 16 * 1024 * 1024)
-        buffer.setDelimiter("\n")
+        var job: Deferred<Unit>
 
         val serial: UsbSerialDevice =
             UsbSerialDevice.createUsbSerialDevice(device, usbConnection).apply {
-                open()
-                setBaudRate(115200)
-                read {
-                    buffer.appendData(it)
-                    while (buffer.hasMoreCommands()) {
-                        val command = buffer.nextBinaryCommand()
-                        // Do something with the command
+                syncOpen()
+                dataParser.prepareSerialDevice(device, this)
 
+                job = async(Dispatchers.IO + coroutineContext) {
+                    val inputStream = DataInputStream(BufferedInputStream(inputStream))
+                    while (isActive) {
+                        val header = inputStream.readByte()
+                        if (header == dataParser.packetHeader) {
+                            dataParser.onDataInput(device, this@apply, inputStream, onReceived)
+                        }
                     }
                 }
             }
+
+        openedSerialDevices[device] = Pair(serial, job)
+        return job
+    }
+
+    suspend fun startReceivingAllAndWait(dataParser: SensorDataParser,
+                                         writer: RecordWriter,
+                          delimiter: Byte,
+                          onReceived: (UsbDevice, UsbSerialDevice, SensorData) -> Unit
+    ) {
+        val jobs = selectedDevices.map {
+            startReceiving(
+                it,
+                dataParser,
+                delimiter = dataParser.packetHeader
+            ) { device, serial, data ->
+                writer.onSensorDataReceived(device, serial, data)
+            }
+        }
+
+        jobs.awaitAll()
     }
 
     fun getAvailableUsbSerialDevices(): List<UsbDevice> {
@@ -108,5 +152,20 @@ class UsbSerial(private val context: Context) {
 
     fun hasPermission(device: UsbDevice): Boolean {
         return usbManager.hasPermission(device)
+    }
+
+    fun stopAllSerial() {
+        //close and remove from openedSerialDevices
+        val iterator = openedSerialDevices.iterator()
+        while (iterator.hasNext()) {
+            val entry = iterator.next()
+            entry.value.second.cancel()
+            entry.value.first.close()
+            iterator.remove()
+        }
+    }
+
+    override fun close() {
+        stopAllSerial()
     }
 }

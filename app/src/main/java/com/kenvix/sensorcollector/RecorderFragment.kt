@@ -12,12 +12,12 @@ import android.widget.ArrayAdapter
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
-import androidx.core.view.size
 import androidx.fragment.app.Fragment
 import com.kenvix.sensorcollector.databinding.FragmentRecordingBinding
-import com.kenvix.sensorcollector.exceptions.BusinessException
+import com.kenvix.sensorcollector.utils.ExcelRecordWriter
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.time.LocalDateTime
@@ -60,7 +60,6 @@ class RecorderFragment : Fragment() {
             safContinuation?.resume(uri)
         }
 
-        scannedSerialStringItems.add("fuckme")
         binding.serialList.apply {
             setChoiceMode(AbsListView.CHOICE_MODE_MULTIPLE)
             setAdapter(
@@ -78,7 +77,7 @@ class RecorderFragment : Fragment() {
                     if (!granted) {
                         // request permission of this usb device
                         activity.launch {
-                            withUIOperationDisabled {
+                            withUIOperationDisabledA {
                                 granted = activity.usbSerial.requestPermission(device)
                                 binding.serialList.setItemChecked(
                                     position,
@@ -99,56 +98,73 @@ class RecorderFragment : Fragment() {
         }
 
         //listView.getCheckedItemPositions();
-        scannedSerialStringItems.add("fucked")
         updateSerialListUI()
 
         binding.buttonScanSerial.setOnClickListener {
-            activity.launch(Dispatchers.Main) {
-                try {
-                    withUIOperationDisabled {
-                        val devices = activity.usbSerial.getAvailableUsbSerialDevices()
-                        Log.d(this::class.simpleName, "Available devices: $devices")
+            try {
+                withUIOperationDisabledN {
+                    val devices = activity.usbSerial.getAvailableUsbSerialDevices()
+                    Log.d(this::class.simpleName, "Available devices: $devices")
 
-                        scannedSerialDevices.clear()
-                        scannedSerialStringItems.clear()
-                        activity.usbSerial.selectedDevices.clear()
-                        devices.forEach {
-                            scannedSerialDevices.add(it)
-                            scannedSerialStringItems.add("${it.productName} ${it.version}\n${it.deviceName}")
-                        }
-
-                        updateSerialListUI()
+                    scannedSerialDevices.clear()
+                    scannedSerialStringItems.clear()
+                    activity.usbSerial.selectedDevices.clear()
+                    devices.forEach {
+                        scannedSerialDevices.add(it)
+                        scannedSerialStringItems.add("${it.productName} ${it.version}\n${it.deviceName}")
                     }
-                } catch (e: Exception) {
-                    Log.w(this::class.simpleName, e)
-                    AlertDialog.Builder(requireContext())
-                        .setTitle("USB Scan failed")
-                        .setMessage(e.message)
-                        .setPositiveButton("OK") { dialog, _ ->
-                            dialog.dismiss()
-                        }
-                        .show()
+
+                    updateSerialListUI()
                 }
+            } catch (e: Exception) {
+                Log.w(this::class.simpleName, e)
+                AlertDialog.Builder(requireContext())
+                    .setTitle("USB Scan failed")
+                    .setMessage(e.message)
+                    .setPositiveButton("OK") { dialog, _ ->
+                        dialog.dismiss()
+                    }
+                    .show()
             }
         }
 
         binding.buttonStartRecoding.setOnClickListener {
-            activity.launch(Dispatchers.Main) {
-                try {
-                    withUIOperationDisabled {
-                        val uri = safCreateFile()
-                            ?: throw BusinessException("You must choose the save path")
-                    }
-                } catch (e: Exception) {
-                    Log.w(this::class.simpleName, e)
-                    AlertDialog.Builder(requireContext())
-                        .setTitle("Record failed")
-                        .setMessage(e.message)
-                        .setPositiveButton("OK") { dialog, _ ->
-                            dialog.dismiss()
+            try {
+                activity.launch(Dispatchers.Main) {
+                    try {
+                        withUIOperationDisabledA {
+//                        val uri = safCreateFile()
+//                            ?: throw BusinessException("You must choose the save path")
+                            activity.writer =
+                                ExcelRecordWriter(Uri.parse("content://com.android.externalstorage.documents/document/primary:Download/2021-09-26T15_00_00.000.xlsx"))
+                            activity.usbSerial.startReceivingAllAndWait(
+                                activity.dataParser,
+                                activity.writer,
+                                activity.dataParser.packetHeader
+                            ) { device, serial, data ->
+                                activity.writer.onSensorDataReceived(device, serial, data)
+                            }
                         }
-                        .show()
+                    } catch (e: Exception) {
+                        Log.w(this::class.simpleName, e)
+                        AlertDialog.Builder(requireContext())
+                            .setTitle("Record failed")
+                            .setMessage(e.toString())
+                            .setPositiveButton("OK") { dialog, _ ->
+                                dialog.dismiss()
+                            }
+                            .show()
+                    }
                 }
+            } catch (e: Exception) {
+                Log.w(this::class.simpleName, e)
+                AlertDialog.Builder(requireContext())
+                    .setTitle("Record failed")
+                    .setMessage(e.toString())
+                    .setPositiveButton("OK") { dialog, _ ->
+                        dialog.dismiss()
+                    }
+                    .show()
             }
         }
 
@@ -170,7 +186,20 @@ class RecorderFragment : Fragment() {
         (binding.serialList.adapter as ArrayAdapter<*>).notifyDataSetChanged()
     }
 
-    private suspend fun withUIOperationDisabled(op: suspend () -> Unit) {
+    private suspend fun withUIOperationDisabledA(op: suspend () -> Unit) {
+        try {
+            binding.buttonStartRecoding.isEnabled = false
+            binding.buttonScanSerial.isEnabled = false
+            binding.serialList.isEnabled = false
+            op()
+        } finally {
+            binding.buttonStartRecoding.isEnabled = true
+            binding.buttonScanSerial.isEnabled = true
+            binding.serialList.isEnabled = true
+        }
+    }
+
+    private fun withUIOperationDisabledN(op: () -> Unit) {
         try {
             binding.buttonStartRecoding.isEnabled = false
             binding.buttonScanSerial.isEnabled = false
