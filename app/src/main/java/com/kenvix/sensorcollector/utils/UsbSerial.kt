@@ -101,13 +101,15 @@ class UsbSerial(private val context: Context) : AutoCloseable,
                           delimiter: Byte,
                           onReceived: (UsbDevice, UsbSerialDevice, SensorData) -> Unit
     ) {
-        val jobs = selectedDevices.map {
-            startReceiving(
-                it,
-                dataParser,
-                delimiter = dataParser.packetHeader
-            ) { device, serial, data ->
-                writer.onSensorDataReceived(device, serial, data)
+        val jobs = opMutex.withLock {
+            selectedDevices.map {
+                startReceiving(
+                    it,
+                    dataParser,
+                    delimiter = dataParser.packetHeader
+                ) { device, serial, data ->
+                    writer.onSensorDataReceived(device, serial, data)
+                }
             }
         }
 
@@ -154,7 +156,7 @@ class UsbSerial(private val context: Context) : AutoCloseable,
         return usbManager.hasPermission(device)
     }
 
-    fun stopAllSerial() {
+    fun stopAllSerialUnsafe() {
         //close and remove from openedSerialDevices
         val iterator = openedSerialDevices.iterator()
         while (iterator.hasNext()) {
@@ -165,7 +167,13 @@ class UsbSerial(private val context: Context) : AutoCloseable,
         }
     }
 
+    suspend fun stopAllSerial() {
+        opMutex.withLock {
+            stopAllSerialUnsafe()
+        }
+    }
+
     override fun close() {
-        stopAllSerial()
+        stopAllSerialUnsafe()
     }
 }

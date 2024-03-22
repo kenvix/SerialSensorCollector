@@ -31,7 +31,7 @@ class MainActivity :
     internal val serialFinder: SerialPortFinder by lazy { SerialPortFinder() }
     internal lateinit var usbSerial: UsbSerial
 
-    internal lateinit var writer: ExcelRecordWriter
+//    internal var writer: ExcelRecordWriter? = null
     internal val dataParser : SensorDataParser = WitHardwareDataParser()
 
     override fun onCreate(savedInstanceState: Bundle?) {

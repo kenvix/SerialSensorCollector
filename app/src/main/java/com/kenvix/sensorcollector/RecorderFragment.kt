@@ -131,29 +131,32 @@ class RecorderFragment : Fragment() {
         binding.buttonStartRecoding.setOnClickListener {
             try {
                 activity.launch(Dispatchers.Main) {
-                    try {
-                        withUIOperationDisabledA {
+                    withUIOperationDisabledA {
+
+                        try {
 //                        val uri = safCreateFile()
 //                            ?: throw BusinessException("You must choose the save path")
-                            activity.writer =
-                                ExcelRecordWriter(Uri.parse("content://com.android.externalstorage.documents/document/primary:Download/2021-09-26T15_00_00.000.xlsx"))
-                            activity.usbSerial.startReceivingAllAndWait(
-                                activity.dataParser,
-                                activity.writer,
-                                activity.dataParser.packetHeader
-                            ) { device, serial, data ->
-                                activity.writer.onSensorDataReceived(device, serial, data)
+                            ExcelRecordWriter(Uri.parse("content://com.android.externalstorage.documents/document/primary:Download/2021-09-26T15_00_00.000.xlsx")).use { writer ->
+                                activity.usbSerial.startReceivingAllAndWait(
+                                    activity.dataParser,
+                                    writer,
+                                    activity.dataParser.packetHeader
+                                ) { device, serial, data ->
+                                    writer.onSensorDataReceived(device, serial, data)
+                                }
                             }
+
+                        } catch (e: Exception) {
+                            activity.usbSerial.stopAllSerial()
+                            Log.w(this::class.simpleName, e)
+                            AlertDialog.Builder(requireContext())
+                                .setTitle("Record failed")
+                                .setMessage(e.toString())
+                                .setPositiveButton("OK") { dialog, _ ->
+                                    dialog.dismiss()
+                                }
+                                .show()
                         }
-                    } catch (e: Exception) {
-                        Log.w(this::class.simpleName, e)
-                        AlertDialog.Builder(requireContext())
-                            .setTitle("Record failed")
-                            .setMessage(e.toString())
-                            .setPositiveButton("OK") { dialog, _ ->
-                                dialog.dismiss()
-                            }
-                            .show()
                     }
                 }
             } catch (e: Exception) {

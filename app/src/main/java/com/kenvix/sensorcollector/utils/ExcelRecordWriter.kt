@@ -15,8 +15,9 @@ import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.io.Closeable
 
-interface RecordWriter {
+interface RecordWriter : Closeable {
     fun onSensorDataReceived(
         usbDevice: UsbDevice,
         usbSerialDevice: UsbSerialDevice,
@@ -36,6 +37,10 @@ class ExcelRecordWriter(val filePath: Uri) : RecordWriter,
         sensorData: SensorData
     ) {
         Log.d("ExcelRecordWriter", "SensorDataReceived: ${usbDevice.deviceName} : $sensorData")
+
+    }
+
+    override fun close() {
 
     }
 }
