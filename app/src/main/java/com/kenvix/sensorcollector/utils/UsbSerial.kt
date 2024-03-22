@@ -30,6 +30,7 @@ class UsbSerial(private val context: Context) {
     companion object Utils {
         private const val ACTION_USB_PERMISSION = "com.kenvix.sensorcollector.USB_PERMISSION"
     }
+    val selectedDevices = mutableSetOf<UsbDevice>()
 
     val usbReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {

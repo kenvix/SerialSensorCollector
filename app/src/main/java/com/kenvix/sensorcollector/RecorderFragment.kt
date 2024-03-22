@@ -69,20 +69,31 @@ class RecorderFragment : Fragment() {
                     R.layout.recording_serial_list_entry, scannedSerialStringItems
                 )
             )
-            
+
             setOnItemClickListener { parent, view, position, id ->
                 val checked = binding.serialList.isItemChecked(position)
                 val device = scannedSerialDevices[position]
-                if (checked && !activity.usbSerial.hasPermission(device)) {
-                    // request permission of this usb device
-                    activity.launch {
-                        withUIOperationDisabled {
-                            binding.serialList.setItemChecked(
-                                position,
-                                activity.usbSerial.requestPermission(device)
-                            )
+                if (checked) {
+                    var granted = activity.usbSerial.hasPermission(device)
+                    if (!granted) {
+                        // request permission of this usb device
+                        activity.launch {
+                            withUIOperationDisabled {
+                                granted = activity.usbSerial.requestPermission(device)
+                                binding.serialList.setItemChecked(
+                                    position,
+                                    granted
+                                )
+
+                                if (granted)
+                                    activity.usbSerial.selectedDevices.add(device)
+                            }
                         }
+                    } else {
+                        activity.usbSerial.selectedDevices.add(device)
                     }
+                } else {
+                    activity.usbSerial.selectedDevices.remove(device)
                 }
             }
         }
@@ -100,6 +111,7 @@ class RecorderFragment : Fragment() {
 
                         scannedSerialDevices.clear()
                         scannedSerialStringItems.clear()
+                        activity.usbSerial.selectedDevices.clear()
                         devices.forEach {
                             scannedSerialDevices.add(it)
                             scannedSerialStringItems.add("${it.productName} ${it.version}\n${it.deviceName}")

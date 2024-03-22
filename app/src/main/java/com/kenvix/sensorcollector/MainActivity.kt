@@ -16,12 +16,12 @@ import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import tp.xmaihh.serialport.SerialHelper
+import java.io.File
 
 
 class MainActivity :
     AppCompatActivity(),
-    CoroutineScope by CoroutineScope(CoroutineName("MainActivity") + Dispatchers.Main)
-{
+    CoroutineScope by CoroutineScope(CoroutineName("MainActivity") + Dispatchers.Main) {
     private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var binding: ActivityMainBinding
     internal val serialFinder: SerialPortFinder by lazy { SerialPortFinder() }
@@ -59,6 +59,24 @@ class MainActivity :
         // as you specify a parent activity in AndroidManifest.xml.
         return when (item.itemId) {
             R.id.action_settings -> true
+            R.id.action_test_device -> {
+                val grantedNum = usbSerial.selectedDevices
+                    .asSequence()
+                    .map {
+                        val f = File(it.deviceName)
+
+                        if (f.exists() && f.canRead()) 1 else 0
+                    }.sum()
+                Snackbar.make(
+                    binding.root,
+                    "Found ${usbSerial.selectedDevices.size} devices, $grantedNum granted",
+                    Snackbar.LENGTH_LONG
+                )
+                    .setAction("Action", null)
+                    .setAnchorView(R.id.fab).show()
+                true
+            }
+
             else -> super.onOptionsItemSelected(item)
         }
     }
