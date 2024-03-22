@@ -17,6 +17,8 @@ import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbDeviceConnection
 import android.hardware.usb.UsbManager
 import com.felhr.usbserial.UsbSerialDevice
+import com.felhr.usbserial.UsbSerialInterface.UsbReadCallback
+import com.felhr.utils.ProtocolBuffer
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
@@ -28,23 +30,44 @@ class UsbSerial(private val context: Context) {
     private val usbManager: UsbManager = context.getSystemService(Context.USB_SERVICE) as UsbManager
     private var permissionContinuation: CancellableContinuation<Boolean>? = null
     private val opMutex = Mutex()
+
     companion object Utils {
         private const val ACTION_USB_PERMISSION = "com.kenvix.sensorcollector.USB_PERMISSION"
     }
+
     val selectedDevices = mutableSetOf<UsbDevice>()
 
     val usbReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action == ACTION_USB_PERMISSION) {
-                permissionContinuation!!.resume(intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false))
+                permissionContinuation!!.resume(
+                    intent.getBooleanExtra(
+                        UsbManager.EXTRA_PERMISSION_GRANTED,
+                        false
+                    )
+                )
             }
         }
     }
 
     fun startReceiving(device: UsbDevice) {
         val usbConnection: UsbDeviceConnection = usbManager.openDevice(device)
-        val serial: UsbSerialDevice = UsbSerialDevice.createUsbSerialDevice(device, usbConnection)
+        val buffer = ProtocolBuffer(ProtocolBuffer.TEXT, 16 * 1024 * 1024)
+        buffer.setDelimiter("\n")
 
+        val serial: UsbSerialDevice =
+            UsbSerialDevice.createUsbSerialDevice(device, usbConnection).apply {
+                open()
+                setBaudRate(115200)
+                read {
+                    buffer.appendData(it)
+                    while (buffer.hasMoreCommands()) {
+                        val command = buffer.nextBinaryCommand()
+                        // Do something with the command
+
+                    }
+                }
+            }
     }
 
     fun getAvailableUsbSerialDevices(): List<UsbDevice> {
@@ -67,7 +90,8 @@ class UsbSerial(private val context: Context) {
         opMutex.withLock {
             try {
                 return suspendCancellableCoroutine { continuation ->
-                    val permissionIntent = PendingIntent.getBroadcast(context, 0, Intent(ACTION_USB_PERMISSION), 0)
+                    val permissionIntent =
+                        PendingIntent.getBroadcast(context, 0, Intent(ACTION_USB_PERMISSION), 0)
                     val filter = IntentFilter(ACTION_USB_PERMISSION)
                     context.registerReceiver(usbReceiver, filter)
                     permissionContinuation = continuation

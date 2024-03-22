@@ -1,0 +1,153 @@
+//--------------------------------------------------
+// Class WitHardwareDataParser
+//--------------------------------------------------
+// Written by Kenvix <i@kenvix.com>
+//--------------------------------------------------
+
+package com.kenvix.sensorcollector.hardware.vendor;
+
+public class WitHardwareDataParser {
+    private void onDataInput(int iLen, byte[] tempBuffer) {
+        byte[] packBuffer = new byte[11];
+        byte sHead;
+        float fTemp;
+        float[] fData = new float[4];
+        receivedPackLength = iLen;
+
+        for (int i = 0; i < iLen; i++) {
+            queueBuffer.add(tempBuffer[i]);// 从缓冲区读取到的数据，都存到队列里
+        }
+
+        while (queueBuffer.size() >= 11) {
+
+            if ((queueBuffer.poll()) != 0x55) {
+                iError++;
+                continue;
+            }// peek()返回对首但不删除 poll 移除并返回
+            sHead = queueBuffer.poll();
+            if ((sHead & 0xF0) == 0x50) iError = 0;
+            for (int j = 0; j < 9; j++) packBuffer[j] = queueBuffer.poll();
+            byte value;
+            value = (byte) (0x55 + sHead);
+            for (int i = 0; i < 8; i++) value = (byte) (value + packBuffer[i]);
+            if (value != packBuffer[8]) {
+                Log.e("--", String.format("%2x %2x %2x %2x %2x %2x %2x %2x %2x SUM:%2x %2x", sHead, packBuffer[0], packBuffer[1], packBuffer[2], packBuffer[3], packBuffer[4], packBuffer[5], packBuffer[6], packBuffer[7], packBuffer[8], value));
+                continue;
+            }
+            for (int i = 0; i < 4; i++)
+                fData[i] = (((short) packBuffer[i * 2 + 1]) << 8) | ((short) packBuffer[i * 2] & 0xff);
+            switch (sHead) {
+                case 0x50:
+                    int ms = (int) fData[3];
+                    strDate = String.format("20%02d-%02d-%02d", packBuffer[0], packBuffer[1], packBuffer[2]);
+                    strTime = String.format("%02d:%02d:%02d.%03d", packBuffer[3], packBuffer[4], packBuffer[5], ms);
+                    break;
+                case 0x51:
+                    for (int i = 0; i < 3; i++)
+                        ac[i] = fData[i] / 32768.0f * ar;
+                    fTempT = fData[3];
+                    if (type == TYPE_AXIS6) T = (float) (fTempT / 340 + 36.53);
+                    else T = fTempT / 100f;
+                    break;
+                case 0x52:
+                    for (int i = 0; i < 3; i++)
+                        w[i] = fData[i] / 32768.0f * av;
+                    if (fData[3] != fTempT) {
+                        {
+                            if (!eqFilt.init) eqFilt.setInitValue(fData[3] / 100f);
+                            eq = eqFilt.filt(fData[3] / 100f);
+                            eqPercent = getEqPercent(eq);
+                            mCallback.dataUpdate(HEADER_Eq);
+                        }
+                    }
+                    break;
+                case 0x53:
+                    for (int i = 0; i < 3; i++)
+                        Angle[i] = fData[i] / 32768.0f * 180;
+                    Eular321ToQuat(Angle, q);
+                    if (fData[3] != fTempT) {
+                        version = fData[3];
+                    }
+                    mCallback.dataUpdate(HEADER_q);
+                    break;
+                case 0x54://磁场
+                    for (int i = 0; i < 3; i++)
+                        h[i] = fData[i];
+                    break;
+                case 0x55://端口
+                    for (int i = 0; i < 4; i++)
+                        d[i] = fData[i];
+                    break;
+                case 0x56://气压、高度
+                    pressure = ((((long) packBuffer[3]) << 24) & 0xff000000) | ((((long) packBuffer[2]) << 16) & 0xff0000) | ((((long) packBuffer[1]) << 8) & 0xff00) | ((((long) packBuffer[0]) & 0xff));
+                    height = (((((long) packBuffer[7]) << 24) & 0xff000000) | ((((long) packBuffer[6]) << 16) & 0xff0000) | ((((long) packBuffer[5]) << 8) & 0xff00) | ((((long) packBuffer[4]) & 0xff))) / 100.0f;
+                    break;
+                case 0x57://经纬度
+                    long Longitude = ((((long) packBuffer[3]) << 24) & 0xff000000) | ((((long) packBuffer[2]) << 16) & 0xff0000) | ((((long) packBuffer[1]) << 8) & 0xff00) | ((((long) packBuffer[0]) & 0xff));
+                    longitude = (float) (Longitude / 10000000 + ((float) (Longitude % 10000000) / 100000.0 / 60.0));
+                    long Latitude = (((((long) packBuffer[7]) << 24) & 0xff000000) | ((((long) packBuffer[6]) << 16) & 0xff0000) | ((((long) packBuffer[5]) << 8) & 0xff00) | ((((long) packBuffer[4]) & 0xff)));
+                    latitude = (float) (Latitude / 10000000 + ((float) (Latitude % 10000000) / 100000.0 / 60.0));
+                    break;
+                case 0x58://海拔、航向、地速
+                    altitude = fData[0] / 10;
+                    yaw = fData[1] / 100;
+                    velocity = (float) (((((long) packBuffer[7]) << 24) & 0xff000000) | ((((long) packBuffer[6]) << 16) & 0xff0000) | ((((long) packBuffer[5]) << 8) & 0xff00) | ((((long) packBuffer[4]) & 0xff))) / 1000;
+                    break;
+                case 0x5a://sat no
+                    sn = fData[0];
+                    pdop = fData[1] / 100.0f;
+                    hdop = fData[2] / 100.0f;
+                    vdop = fData[3] / 100.0f;
+                    break;
+                case 0x5f://sat no
+                    CopeRegs(regStart, fData);
+                    regStart = -1;
+                    break;
+            }//switch
+
+            if ((sHead >= 0x50) && (sHead <= 0x5a)) {
+                if (protocal == PROTOCAL_NONE) protocal = PROTOCAL_WIT;
+                RecordData(sHead, true);
+                mCallback.dataUpdate(sHead);
+                continue;
+            }
+        }
+    }
+
+    public void CopeBLEData(int iLen, byte[] packBuffer) {
+        float[] fData = new float[9];
+        receivedPackLength = iLen;
+        if (packBuffer != null && iLen >= 20) {
+            int iStart = 0;
+            while (iStart + 20 <= iLen) {
+                if (packBuffer[iStart] != 0x55) break;
+                switch (packBuffer[iStart + 1]) {
+                    case 0x71:
+                        for (int i = 0; i < 8; i++)
+                            fData[i] = (((short) packBuffer[iStart + i * 2 + 5]) << 8) | ((short) packBuffer[iStart + i * 2 + 4] & 0xff);
+                        CopeRegs(packBuffer[iStart + 2], fData);
+                        return;
+                    case 0x61:
+                        if (protocal == PROTOCAL_NONE) protocal = PROTOCAL_BLE;
+                        for (int i = 0; i < 9; i++)
+                            fData[i] = (((short) packBuffer[iStart + i * 2 + 3]) << 8) | ((short) packBuffer[iStart + i * 2 + 2] & 0xff);
+                        for (int i = 0; i < 3; i++)
+                            ac[i] = (float) (fData[i] / 32768.0 * 16.0);
+                        for (int i = 3; i < 6; i++)
+                            w[i - 3] = (float) (fData[i] / 32768.0 * 2000.0);
+                        for (int i = 6; i < 9; i++)
+                            Angle[i - 6] = (float) (fData[i] / 32768.0 * 180.0);
+                        Eular321ToQuat(Angle, q);
+                        mCallback.dataUpdate(HEADER_Acc);
+                        mCallback.dataUpdate(HEADER_Gyro);
+                        mCallback.dataUpdate(HEADER_Angle);
+                        mCallback.dataUpdate(HEADER_q);
+                        RecordData((byte) 0x00, false);
+                        break;
+                }
+                iStart += 20;
+            }
+
+        }
+    }
+}
