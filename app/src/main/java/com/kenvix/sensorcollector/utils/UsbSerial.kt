@@ -14,14 +14,15 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.hardware.usb.UsbConstants
 import android.hardware.usb.UsbDevice
+import android.hardware.usb.UsbDeviceConnection
 import android.hardware.usb.UsbManager
-import android.net.Uri
-import android.util.Log
+import com.felhr.usbserial.UsbSerialDevice
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.coroutines.resume
+
 
 class UsbSerial(private val context: Context) {
     private val usbManager: UsbManager = context.getSystemService(Context.USB_SERVICE) as UsbManager
@@ -38,6 +39,12 @@ class UsbSerial(private val context: Context) {
                 permissionContinuation!!.resume(intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false))
             }
         }
+    }
+
+    fun startReceiving(device: UsbDevice) {
+        val usbConnection: UsbDeviceConnection = usbManager.openDevice(device)
+        val serial: UsbSerialDevice = UsbSerialDevice.createUsbSerialDevice(device, usbConnection)
+
     }
 
     fun getAvailableUsbSerialDevices(): List<UsbDevice> {

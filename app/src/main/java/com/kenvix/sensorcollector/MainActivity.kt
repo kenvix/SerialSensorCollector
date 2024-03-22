@@ -9,6 +9,7 @@ import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
+import com.felhr.usbserial.UsbSerialDevice
 import com.google.android.material.snackbar.Snackbar
 import com.kenvix.sensorcollector.databinding.ActivityMainBinding
 import com.kenvix.sensorcollector.utils.UsbSerial
@@ -59,17 +60,18 @@ class MainActivity :
         // as you specify a parent activity in AndroidManifest.xml.
         return when (item.itemId) {
             R.id.action_settings -> true
+            R.id.show_available_drivers -> {
+                true
+            }
+
             R.id.action_test_device -> {
                 val grantedNum = usbSerial.selectedDevices
                     .asSequence()
-                    .map {
-                        val f = File(it.deviceName)
-
-                        if (f.exists() && f.canRead()) 1 else 0
-                    }.sum()
+                    .map { if (UsbSerialDevice.isSupported(it)) 1 else 0 }
+                    .sum()
                 Snackbar.make(
                     binding.root,
-                    "Found ${usbSerial.selectedDevices.size} devices, $grantedNum granted",
+                    "Found ${usbSerial.selectedDevices.size} devices, $grantedNum supported",
                     Snackbar.LENGTH_LONG
                 )
                     .setAction("Action", null)

@@ -8,6 +8,11 @@
             android:orderInCategory="100"
             app:showAsAction="never" />
     <item
+            android:id="@+id/show_available_drivers"
+            android:title="@string/show_available_drivers"
+            android:orderInCategory="100"
+            app:showAsAction="never" />
+    <item
             android:id="@+id/action_test_device"
             android:title="@string/action_test_device"
             android:orderInCategory="100"
