@@ -1,10 +1,25 @@
 package com.kenvix.sensorcollector.ui
 
+import android.Manifest
+import android.annotation.SuppressLint
+import android.content.BroadcastReceiver
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.content.ServiceConnection
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import android.os.IBinder
+import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android_serialport_api.SerialPortFinder
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContentProviderCompat.requireContext
+import androidx.core.content.ContextCompat
 import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.navigateUp
@@ -16,6 +31,7 @@ import com.kenvix.sensorcollector.databinding.ActivityMainBinding
 import com.kenvix.sensorcollector.hardware.vendor.SensorDataParser
 import com.kenvix.sensorcollector.hardware.vendor.WitHardwareDataParser
 import com.kenvix.sensorcollector.services.UsbSerial
+import com.kenvix.sensorcollector.services.UsbSerialRecorderService
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -24,14 +40,41 @@ import kotlinx.coroutines.Dispatchers
 class MainActivity :
     AppCompatActivity(),
     CoroutineScope by CoroutineScope(CoroutineName("MainActivity") + Dispatchers.Main) {
+    private var workingDialog: AlertDialog? = null
     private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var binding: ActivityMainBinding
     internal val serialFinder: SerialPortFinder by lazy { SerialPortFinder() }
     internal lateinit var usbSerial: UsbSerial
 
-//    internal var writer: ExcelRecordWriter? = null
-    internal val dataParser : SensorDataParser = WitHardwareDataParser()
+    private var service: UsbSerialRecorderService? = null
 
+    private val serviceConnection = object : ServiceConnection {
+        override fun onServiceConnected(className: ComponentName, service: IBinder) {
+            val binder = service as UsbSerialRecorderService.LocalBinder
+            this@MainActivity.service = binder.getService()
+        }
+
+        override fun onServiceDisconnected(arg0: ComponentName) {
+            Log.i("MainActivity", "UsbSerialRecorderService Service disconnected")
+            this@MainActivity.service = null
+        }
+    }
+
+    private val broadcastReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            when (intent.action) {
+                "com.kenvix.sensorcollector.ACTION_WORKER_SERVICE_STARTED" ->
+                    showProgressDialogIfRecordingNow()
+
+                "com.kenvix.sensorcollector.ACTION_WORKER_SERVICE_STOPPED" ->
+                    dismissProgressDialogIfRecordingNow()
+            }
+        }
+    }
+
+    internal val dataParser: SensorDataParser = WitHardwareDataParser()
+
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -49,6 +92,48 @@ class MainActivity :
             Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
                 .setAction("Action", null)
                 .setAnchorView(R.id.fab).show()
+        }
+
+        acquirePermissions()
+        bindUsbSerialWorkerService()
+        showProgressDialogIfRecordingNow()
+        dismissProgressDialogIfRecordingNow()
+
+        val filter = IntentFilter().apply {
+            addAction("com.kenvix.sensorcollector.ACTION_WORKER_SERVICE_STARTED")
+            addAction("com.kenvix.sensorcollector.ACTION_WORKER_SERVICE_STOPPED")
+        }
+        registerReceiver(broadcastReceiver, filter)
+    }
+
+    override fun onStart() {
+        super.onStart()
+    }
+
+    fun showProgressDialogIfRecordingNow() {
+        if (service?.isRecording == true) {
+            workingDialog = AlertDialog.Builder(this)
+                .setTitle("Recording")
+                .setCancelable(false)
+                .setMessage("Recording is in progress, click button below to stop recording.")
+                .setNegativeButton("Stop") { dialog, _ ->
+                    dialog.dismiss()
+                }.show()
+        }
+    }
+
+    fun dismissProgressDialogIfRecordingNow() {
+        if (workingDialog != null && service?.isRecording == false) {
+            workingDialog?.dismiss()
+            workingDialog = null
+        }
+    }
+
+    private fun bindUsbSerialWorkerService() {
+        if (service == null) {
+            // Create a reference to the foreground service instance
+            val serviceIntent = Intent(this, UsbSerialRecorderService::class.java)
+            bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE)
         }
     }
 
@@ -87,9 +172,75 @@ class MainActivity :
         }
     }
 
+
+    private fun isPermissionsGranted(): Boolean {
+        val permsA = sequenceOf(
+            ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION),
+            ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION),
+            ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_ADMIN),
+            ContextCompat.checkSelfPermission(this, Manifest.permission.FOREGROUND_SERVICE),
+        ).all { it == PackageManager.PERMISSION_GRANTED }
+
+        var permsB = true
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            permsB = sequenceOf(
+                ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT),
+                ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_ADVERTISE),
+                ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN)
+            ).all { it == PackageManager.PERMISSION_GRANTED }
+        }
+
+        return permsB && permsA
+    }
+
+    private fun acquirePermissions() {
+        if (!isPermissionsGranted()) {
+            val perms = arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+                Manifest.permission.BLUETOOTH_ADMIN,
+                Manifest.permission.FOREGROUND_SERVICE,
+            )
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                perms.plus(
+                    arrayOf(
+                        Manifest.permission.BLUETOOTH_CONNECT,
+                        Manifest.permission.BLUETOOTH_ADVERTISE,
+                        Manifest.permission.BLUETOOTH_SCAN,
+                    )
+                )
+            }
+
+            requestPermissions(perms, 0)
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (!isPermissionsGranted()) {
+            AlertDialog.Builder(this)
+                .setTitle("Permissions required")
+                .setMessage("Permissions not granted, some features may not work.")
+                .setOnDismissListener { acquirePermissions() }
+                .setPositiveButton("OK") { dialog, _ ->
+                    dialog.dismiss()
+                }.show()
+        }
+    }
+
     override fun onSupportNavigateUp(): Boolean {
         val navController = findNavController(R.id.nav_host_fragment_content_main)
         return navController.navigateUp(appBarConfiguration)
                 || super.onSupportNavigateUp()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        unregisterReceiver(broadcastReceiver)
     }
 }

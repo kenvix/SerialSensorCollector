@@ -1,7 +1,10 @@
 package com.kenvix.sensorcollector.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.hardware.usb.UsbDevice
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -12,6 +15,7 @@ import android.widget.ArrayAdapter
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.kenvix.sensorcollector.R
 import com.kenvix.sensorcollector.databinding.FragmentRecordingBinding
@@ -137,6 +141,7 @@ class RecorderFragment : Fragment() {
                         try {
                             val uri = safCreateFile()
                                 ?: throw BusinessException("You must choose the save path")
+
                             ExcelRecordWriter(requireContext(), uri).use { writer ->
                                 writer.setDeviceList(activity.usbSerial.selectedDevices)
                                 activity.usbSerial.startReceivingAllAndWait(
