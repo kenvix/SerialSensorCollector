@@ -1,4 +1,4 @@
-package com.kenvix.sensorcollector
+package com.kenvix.sensorcollector.ui
 
 import android.os.Bundle
 import android.view.Menu
@@ -11,16 +11,14 @@ import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
 import com.felhr.usbserial.UsbSerialDevice
 import com.google.android.material.snackbar.Snackbar
+import com.kenvix.sensorcollector.R
 import com.kenvix.sensorcollector.databinding.ActivityMainBinding
 import com.kenvix.sensorcollector.hardware.vendor.SensorDataParser
 import com.kenvix.sensorcollector.hardware.vendor.WitHardwareDataParser
-import com.kenvix.sensorcollector.utils.ExcelRecordWriter
-import com.kenvix.sensorcollector.utils.UsbSerial
+import com.kenvix.sensorcollector.services.UsbSerial
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import tp.xmaihh.serialport.SerialHelper
-import java.io.File
 
 
 class MainActivity :

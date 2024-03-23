@@ -4,7 +4,7 @@
 // Written by Kenvix <i@kenvix.com>
 //--------------------------------------------------
 
-package com.kenvix.sensorcollector.utils
+package com.kenvix.sensorcollector.services
 
 import android.annotation.SuppressLint
 import android.app.PendingIntent
@@ -17,21 +17,17 @@ import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbDeviceConnection
 import android.hardware.usb.UsbManager
 import com.felhr.usbserial.UsbSerialDevice
-import com.felhr.usbserial.UsbSerialInterface.UsbReadCallback
-import com.felhr.utils.ProtocolBuffer
 import com.kenvix.sensorcollector.hardware.vendor.SensorData
 import com.kenvix.sensorcollector.hardware.vendor.SensorDataParser
+import com.kenvix.sensorcollector.utils.RecordWriter
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -98,8 +94,8 @@ class UsbSerial(private val context: Context) : AutoCloseable,
 
     suspend fun startReceivingAllAndWait(dataParser: SensorDataParser,
                                          writer: RecordWriter,
-                          delimiter: Byte,
-                          onReceived: (UsbDevice, UsbSerialDevice, SensorData) -> Unit
+                                         delimiter: Byte,
+                                         onReceived: (UsbDevice, UsbSerialDevice, SensorData) -> Unit
     ) {
         val jobs = opMutex.withLock {
             selectedDevices.map {

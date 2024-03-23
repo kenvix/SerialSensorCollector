@@ -1,4 +1,4 @@
-package com.kenvix.sensorcollector
+package com.kenvix.sensorcollector.ui
 
 import android.hardware.usb.UsbDevice
 import android.net.Uri
@@ -13,11 +13,12 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
+import com.kenvix.sensorcollector.R
 import com.kenvix.sensorcollector.databinding.FragmentRecordingBinding
+import com.kenvix.sensorcollector.exceptions.BusinessException
 import com.kenvix.sensorcollector.utils.ExcelRecordWriter
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.time.LocalDateTime
@@ -134,9 +135,10 @@ class RecorderFragment : Fragment() {
                     withUIOperationDisabledA {
 
                         try {
-//                        val uri = safCreateFile()
-//                            ?: throw BusinessException("You must choose the save path")
-                            ExcelRecordWriter(Uri.parse("content://com.android.externalstorage.documents/document/primary:Download/2021-09-26T15_00_00.000.xlsx")).use { writer ->
+                            val uri = safCreateFile()
+                                ?: throw BusinessException("You must choose the save path")
+                            ExcelRecordWriter(requireContext(), uri).use { writer ->
+                                writer.setDeviceList(activity.usbSerial.selectedDevices)
                                 activity.usbSerial.startReceivingAllAndWait(
                                     activity.dataParser,
                                     writer,

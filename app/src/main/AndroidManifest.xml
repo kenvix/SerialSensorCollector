@@ -16,7 +16,7 @@
             android:theme="@style/Theme.SensorCollector"
             tools:targetApi="31">
         <activity
-                android:name="com.kenvix.sensorcollector.MainActivity"
+                android:name="com.kenvix.sensorcollector.ui.MainActivity"
                 android:exported="true"
                 android:theme="@style/Theme.SensorCollector">
             <intent-filter>

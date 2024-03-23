@@ -52,4 +52,5 @@ dependencies {
 
     implementation(libs.serialport)
     implementation(libs.usbserial)
+    implementation(libs.poi.ooxml)
 }
