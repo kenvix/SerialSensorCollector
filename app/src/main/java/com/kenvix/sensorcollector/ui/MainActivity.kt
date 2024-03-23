@@ -9,16 +9,18 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
+import android.os.PowerManager
+import android.provider.Settings
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android_serialport_api.SerialPortFinder
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContentProviderCompat.requireContext
 import androidx.core.content.ContextCompat
 import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
@@ -41,6 +43,7 @@ class MainActivity :
     AppCompatActivity(),
     CoroutineScope by CoroutineScope(CoroutineName("MainActivity") + Dispatchers.Main) {
     private var workingDialog: AlertDialog? = null
+    private lateinit var powerManager: PowerManager
     private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var binding: ActivityMainBinding
     internal val serialFinder: SerialPortFinder by lazy { SerialPortFinder() }
@@ -84,6 +87,8 @@ class MainActivity :
         setContentView(binding.root)
         setSupportActionBar(binding.toolbar)
 
+        powerManager = applicationContext.getSystemService(POWER_SERVICE) as PowerManager
+
         val navController = findNavController(R.id.nav_host_fragment_content_main)
         appBarConfiguration = AppBarConfiguration(navController.graph)
         setupActionBarWithNavController(navController, appBarConfiguration)
@@ -117,7 +122,13 @@ class MainActivity :
                 .setCancelable(false)
                 .setMessage("Recording is in progress, click button below to stop recording.")
                 .setNegativeButton("Stop") { dialog, _ ->
-                    dialog.dismiss()
+                    service?.tryStopService()
+                    workingDialog?.dismiss()
+                    workingDialog = AlertDialog.Builder(this)
+                        .setTitle("Stopping")
+                        .setMessage("Stopping recording, please wait...")
+                        .setCancelable(false)
+                        .show()
                 }.show()
         }
     }
@@ -179,6 +190,7 @@ class MainActivity :
             ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION),
             ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_ADMIN),
             ContextCompat.checkSelfPermission(this, Manifest.permission.FOREGROUND_SERVICE),
+            ContextCompat.checkSelfPermission(this, Manifest.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS),
         ).all { it == PackageManager.PERMISSION_GRANTED }
 
         var permsB = true
@@ -190,9 +202,12 @@ class MainActivity :
             ).all { it == PackageManager.PERMISSION_GRANTED }
         }
 
-        return permsB && permsA
+        val powerPerm = powerManager.isIgnoringBatteryOptimizations(packageName)
+
+        return permsB && permsA && powerPerm
     }
 
+    @SuppressLint("BatteryLife")
     private fun acquirePermissions() {
         if (!isPermissionsGranted()) {
             val perms = arrayOf(
@@ -200,6 +215,7 @@ class MainActivity :
                 Manifest.permission.ACCESS_COARSE_LOCATION,
                 Manifest.permission.BLUETOOTH_ADMIN,
                 Manifest.permission.FOREGROUND_SERVICE,
+                Manifest.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
             )
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -213,6 +229,18 @@ class MainActivity :
             }
 
             requestPermissions(perms, 0)
+
+            /////////// Power Optimization Exemption ///////////
+            if (!powerManager.isIgnoringBatteryOptimizations(packageName)) {
+                val i = Intent()
+
+                if (!powerManager.isIgnoringBatteryOptimizations(packageName)) {
+                    i.setAction(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                    i.setData(Uri.parse("package:$packageName"))
+                    startActivity(i)
+                }
+            }
+            ///////////////////////////////////////////////////
         }
     }
 
@@ -225,7 +253,8 @@ class MainActivity :
         if (!isPermissionsGranted()) {
             AlertDialog.Builder(this)
                 .setTitle("Permissions required")
-                .setMessage("Permissions not granted, some features may not work.")
+                .setMessage("Permissions not granted, some features may not work. \n" +
+                        "Please grant all permissions and press OK to continue.")
                 .setOnDismissListener { acquirePermissions() }
                 .setPositiveButton("OK") { dialog, _ ->
                     dialog.dismiss()

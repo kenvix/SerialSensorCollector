@@ -139,19 +139,20 @@ class RecorderFragment : Fragment() {
                     withUIOperationDisabledA {
 
                         try {
-                            val uri = safCreateFile()
-                                ?: throw BusinessException("You must choose the save path")
 
-                            ExcelRecordWriter(requireContext(), uri).use { writer ->
-                                writer.setDeviceList(activity.usbSerial.selectedDevices)
-                                activity.usbSerial.startReceivingAllAndWait(
-                                    activity.dataParser,
-                                    writer,
-                                    activity.dataParser.packetHeader
-                                ) { device, serial, data ->
-                                    writer.onSensorDataReceived(device, serial, data)
-                                }
-                            }
+//                            val uri = safCreateFile()
+//                                ?: throw BusinessException("You must choose the save path")
+//
+//                            ExcelRecordWriter(requireContext(), uri).use { writer ->
+//                                writer.setDeviceList(activity.usbSerial.selectedDevices)
+//                                activity.usbSerial.startReceivingAllAndWait(
+//                                    activity.dataParser,
+//                                    writer,
+//                                    activity.dataParser.packetHeader
+//                                ) { device, serial, data ->
+//                                    writer.onSensorDataReceived(device, serial, data)
+//                                }
+//                            }
 
                         } catch (e: Exception) {
                             activity.usbSerial.stopAllSerial()
