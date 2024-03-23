@@ -44,6 +44,7 @@
         <activity
                 android:name="com.kenvix.sensorcollector.ui.MainActivity"
                 android:exported="true"
+                android:launchMode="singleInstance"
                 android:theme="@style/Theme.SensorCollector">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

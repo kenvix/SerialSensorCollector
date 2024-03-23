@@ -8,21 +8,29 @@ package com.kenvix.sensorcollector.services
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.hardware.usb.UsbDevice
+import android.net.Uri
 import android.os.Binder
+import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.kenvix.sensorcollector.R
+import com.kenvix.sensorcollector.hardware.vendor.SensorDataParser
+import com.kenvix.sensorcollector.ui.MainActivity
+import com.kenvix.sensorcollector.utils.RecordWriter
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.HashSet
 
 class UsbSerialRecorderService :
     Service(),
@@ -31,6 +39,11 @@ class UsbSerialRecorderService :
     private lateinit var notificationManager: NotificationManager
     private lateinit var powerManager: PowerManager
     private lateinit var wakeLock: PowerManager.WakeLock
+
+    var uri: Uri? = null
+    var devices: java.util.HashSet<UsbDevice>? = null
+    private var recordWriter: RecordWriter? = null
+    private var dataParser: SensorDataParser? = null
 
     // Binder given to clients
     private val binder = LocalBinder()
@@ -73,13 +86,32 @@ class UsbSerialRecorderService :
         Log.d("UsbSerialRecorderService", "Service created")
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+    @Suppress("DEPRECATION", "UNCHECKED_CAST")
+    override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
         Log.d("UsbSerialRecorderService", "Service starting")
+        // for android <13
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            uri = intent.getParcelableExtra("uri", Uri::class.java)
+            devices = intent.getSerializableExtra("devices", HashSet::class.java) as HashSet<UsbDevice>
+            dataParser = intent.getSerializableExtra("parser", HashSet::class.java) as SensorDataParser
+        } else {
+            uri = intent.getParcelableExtra("uri")
+            devices = intent.getSerializableExtra("devices") as HashSet<UsbDevice>
+            dataParser = intent.getSerializableExtra("parser") as SensorDataParser
+        }
+
+        val mainIntent = Intent(this, MainActivity::class.java).apply {
+            setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        }
+        val pendingIntent = PendingIntent.getActivity(this, 0, mainIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+
         // 创建通知
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.record_service_channel_name))
-            .setContentText(getString(R.string.record_service_channel_info))
+            .setContentText(getString(R.string.record_service_channel_info, uri.toString()))
             .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentIntent(pendingIntent)
             .build()
 
         // 启动前台服务
@@ -88,7 +120,7 @@ class UsbSerialRecorderService :
 
         startWorking()
 
-        return START_NOT_STICKY
+        return START_STICKY
     }
 
     private fun startWorking() {
@@ -108,7 +140,7 @@ class UsbSerialRecorderService :
         val updatedNotification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground) // 设置一个小图标
             .setContentTitle(getString(R.string.record_service_channel_name))
-            .setContentText(getString(R.string.record_service_channel_stopping))
+            .setContentText(getString(R.string.record_service_channel_stopping, uri.toString()))
             .build()
 
         // 使用相同的NOTIFICATION_ID更新通知
@@ -123,6 +155,7 @@ class UsbSerialRecorderService :
             if (wakeLock.isHeld)
                 wakeLock.release()
 
+            isRecording = false
             val intent = Intent("com.kenvix.sensorcollector.ACTION_WORKER_SERVICE_STOPPED")
             sendBroadcast(intent)
             stopSelf()

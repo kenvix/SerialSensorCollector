@@ -116,25 +116,34 @@ class MainActivity :
     }
 
     fun showProgressDialogIfRecordingNow() {
-        if (service?.isRecording == true) {
+        if (service?.isRecording == true && (workingDialog == null || !workingDialog!!.isShowing)) {
             workingDialog = AlertDialog.Builder(this)
                 .setTitle("Recording")
                 .setCancelable(false)
-                .setMessage("Recording is in progress, click button below to stop recording.")
+                .setMessage(getString(R.string.record_activity_info_detailed,
+                    service?.uri.toString(),
+                    service?.devices?.joinToString("\n") { it.deviceName }))
                 .setNegativeButton("Stop") { dialog, _ ->
                     service?.tryStopService()
                     workingDialog?.dismiss()
                     workingDialog = AlertDialog.Builder(this)
                         .setTitle("Stopping")
-                        .setMessage("Stopping recording, please wait...")
+                        .setMessage(getString(R.string.record_service_channel_stopping, service?.uri.toString()))
                         .setCancelable(false)
-                        .show()
+                        .create()
+
+                    if (service?.isRecording != true) {
+                        workingDialog?.dismiss()
+                        workingDialog = null
+                    } else {
+                        workingDialog?.show()
+                    }
                 }.show()
         }
     }
 
     fun dismissProgressDialogIfRecordingNow() {
-        if (workingDialog != null && service?.isRecording == false) {
+        if (workingDialog != null && service?.isRecording != true) {
             workingDialog?.dismiss()
             workingDialog = null
         }

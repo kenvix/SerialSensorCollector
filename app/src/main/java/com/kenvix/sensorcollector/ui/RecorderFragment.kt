@@ -1,6 +1,7 @@
 package com.kenvix.sensorcollector.ui
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.hardware.usb.UsbDevice
 import android.net.Uri
@@ -20,6 +21,7 @@ import androidx.fragment.app.Fragment
 import com.kenvix.sensorcollector.R
 import com.kenvix.sensorcollector.databinding.FragmentRecordingBinding
 import com.kenvix.sensorcollector.exceptions.BusinessException
+import com.kenvix.sensorcollector.services.UsbSerialRecorderService
 import com.kenvix.sensorcollector.utils.ExcelRecordWriter
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.Dispatchers
@@ -139,7 +141,11 @@ class RecorderFragment : Fragment() {
                     withUIOperationDisabledA {
 
                         try {
-
+                            val intent = Intent(context, UsbSerialRecorderService::class.java)
+                            intent.putExtra("uri", Uri.parse("content://com.kenvix.sensorcollector/recordings/"))
+                            intent.putExtra("devices", activity.usbSerial.selectedDevices)
+                            intent.putExtra("parser", activity.dataParser)
+                            ContextCompat.startForegroundService(requireContext(), intent)
 //                            val uri = safCreateFile()
 //                                ?: throw BusinessException("You must choose the save path")
 //
