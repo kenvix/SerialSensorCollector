@@ -21,6 +21,7 @@ import androidx.fragment.app.Fragment
 import com.kenvix.sensorcollector.R
 import com.kenvix.sensorcollector.databinding.FragmentRecordingBinding
 import com.kenvix.sensorcollector.exceptions.BusinessException
+import com.kenvix.sensorcollector.services.UsbSerial
 import com.kenvix.sensorcollector.services.UsbSerialRecorderService
 import com.kenvix.sensorcollector.utils.ExcelRecordWriter
 import kotlinx.coroutines.CancellableContinuation
@@ -80,26 +81,26 @@ class RecorderFragment : Fragment() {
                 val checked = binding.serialList.isItemChecked(position)
                 val device = scannedSerialDevices[position]
                 if (checked) {
-                    var granted = activity.usbSerial.hasPermission(device)
+                    var granted = UsbSerial.hasPermission(device)
                     if (!granted) {
                         // request permission of this usb device
                         activity.launch {
                             withUIOperationDisabledA {
-                                granted = activity.usbSerial.requestPermission(device)
+                                granted = UsbSerial.requestPermission(requireContext(), device)
                                 binding.serialList.setItemChecked(
                                     position,
                                     granted
                                 )
 
                                 if (granted)
-                                    activity.usbSerial.selectedDevices.add(device)
+                                    UsbSerial.selectedDevices.add(device)
                             }
                         }
                     } else {
-                        activity.usbSerial.selectedDevices.add(device)
+                        UsbSerial.selectedDevices.add(device)
                     }
                 } else {
-                    activity.usbSerial.selectedDevices.remove(device)
+                    UsbSerial.selectedDevices.remove(device)
                 }
             }
         }
@@ -110,12 +111,12 @@ class RecorderFragment : Fragment() {
         binding.buttonScanSerial.setOnClickListener {
             try {
                 withUIOperationDisabledN {
-                    val devices = activity.usbSerial.getAvailableUsbSerialDevices()
+                    val devices = UsbSerial.getAvailableUsbSerialDevices()
                     Log.d(this::class.simpleName, "Available devices: $devices")
 
                     scannedSerialDevices.clear()
                     scannedSerialStringItems.clear()
-                    activity.usbSerial.selectedDevices.clear()
+                    UsbSerial.selectedDevices.clear()
                     devices.forEach {
                         scannedSerialDevices.add(it)
                         scannedSerialStringItems.add("${it.productName} ${it.version}\n${it.deviceName}")
@@ -141,30 +142,18 @@ class RecorderFragment : Fragment() {
                     withUIOperationDisabledA {
 
                         try {
+                            val uri = safCreateFile()
+                                ?: throw BusinessException("You must choose the save path")
+
                             val intent = Intent(context, UsbSerialRecorderService::class.java)
-                            intent.putExtra("uri", Uri.parse("content://com.kenvix.sensorcollector/recordings/"))
-                            intent.putExtra("devices", activity.usbSerial.selectedDevices)
+                            intent.putExtra("uri", uri)
                             intent.putExtra("parser", activity.dataParser)
                             ContextCompat.startForegroundService(requireContext(), intent)
-//                            val uri = safCreateFile()
-//                                ?: throw BusinessException("You must choose the save path")
-//
-//                            ExcelRecordWriter(requireContext(), uri).use { writer ->
-//                                writer.setDeviceList(activity.usbSerial.selectedDevices)
-//                                activity.usbSerial.startReceivingAllAndWait(
-//                                    activity.dataParser,
-//                                    writer,
-//                                    activity.dataParser.packetHeader
-//                                ) { device, serial, data ->
-//                                    writer.onSensorDataReceived(device, serial, data)
-//                                }
-//                            }
-
                         } catch (e: Exception) {
-                            activity.usbSerial.stopAllSerial()
+                            UsbSerial.stopAllSerial()
                             Log.w(this::class.simpleName, e)
                             AlertDialog.Builder(requireContext())
-                                .setTitle("Record failed")
+                                .setTitle("Start Recorder Service Failed")
                                 .setMessage(e.toString())
                                 .setPositiveButton("OK") { dialog, _ ->
                                     dialog.dismiss()

@@ -16,6 +16,7 @@ import android.hardware.usb.UsbConstants
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbDeviceConnection
 import android.hardware.usb.UsbManager
+import android.util.Log
 import com.felhr.usbserial.UsbSerialDevice
 import com.kenvix.sensorcollector.hardware.vendor.SensorData
 import com.kenvix.sensorcollector.hardware.vendor.SensorDataParser
@@ -31,24 +32,28 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import java.io.BufferedInputStream
 import java.io.DataInputStream
+import java.io.EOFException
 import kotlin.coroutines.resume
 
 
-class UsbSerial(private val context: Context) : AutoCloseable,
+object UsbSerial : AutoCloseable,
     CoroutineScope by CoroutineScope(CoroutineName("UsbSerial")) {
-    private val usbManager: UsbManager = context.getSystemService(Context.USB_SERVICE) as UsbManager
+    private lateinit var usbManager: UsbManager
     private var permissionContinuation: CancellableContinuation<Boolean>? = null
     private val opMutex = Mutex()
     val openedSerialDevices: MutableMap<UsbDevice, Pair<UsbSerialDevice, Deferred<Unit>>> =
         mutableMapOf()
 
-    companion object Utils {
-        private const val ACTION_USB_PERMISSION = "com.kenvix.sensorcollector.USB_PERMISSION"
-    }
+    private const val ACTION_USB_PERMISSION = "com.kenvix.sensorcollector.USB_PERMISSION"
 
     val selectedDevices = HashSet<UsbDevice>()
+
+    fun init(sysContext: Context) {
+        usbManager = sysContext.getSystemService(Context.USB_SERVICE) as UsbManager
+    }
 
     val usbReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -79,11 +84,15 @@ class UsbSerial(private val context: Context) : AutoCloseable,
 
                 job = async(Dispatchers.IO + coroutineContext) {
                     val inputStream = DataInputStream(BufferedInputStream(inputStream))
-                    while (isActive) {
-                        val header = inputStream.readByte()
-                        if (header == dataParser.packetHeader) {
-                            dataParser.onDataInput(device, this@apply, inputStream, onReceived)
+                    try {
+                        while (isActive) {
+                            val header = inputStream.readByte()
+                            if (header == dataParser.packetHeader) {
+                                dataParser.onDataInput(device, this@apply, inputStream, onReceived)
+                            }
                         }
+                    } catch (ignored: EOFException) {
+                        Log.i("UsbSerial", "EOF of device ${device.deviceName}")
                     }
                 }
             }
@@ -92,19 +101,22 @@ class UsbSerial(private val context: Context) : AutoCloseable,
         return job
     }
 
-    suspend fun startReceivingAllAndWait(dataParser: SensorDataParser,
-                                         writer: RecordWriter,
-                                         delimiter: Byte,
-                                         onReceived: (UsbDevice, UsbSerialDevice, SensorData) -> Unit
+    suspend fun startReceivingAllAndWait(
+        dataParser: SensorDataParser,
+        writer: RecordWriter,
+        delimiter: Byte,
+        onReceived: (UsbDevice, UsbSerialDevice, SensorData) -> Unit
     ) {
         val jobs = opMutex.withLock {
             selectedDevices.map {
-                startReceiving(
-                    it,
-                    dataParser,
-                    delimiter = dataParser.packetHeader
-                ) { device, serial, data ->
-                    writer.onSensorDataReceived(device, serial, data)
+                withContext(Dispatchers.IO) {
+                    startReceiving(
+                        it,
+                        dataParser,
+                        delimiter = dataParser.packetHeader
+                    ) { device, serial, data ->
+                        writer.onSensorDataReceived(device, serial, data)
+                    }
                 }
             }
         }
@@ -128,22 +140,22 @@ class UsbSerial(private val context: Context) : AutoCloseable,
     }
 
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
-    suspend fun requestPermission(device: UsbDevice): Boolean {
+    suspend fun requestPermission(uiContext: Context, device: UsbDevice): Boolean {
         opMutex.withLock {
             try {
                 return suspendCancellableCoroutine { continuation ->
                     val permissionIntent =
-                        PendingIntent.getBroadcast(context, 0, Intent(ACTION_USB_PERMISSION), 0)
+                        PendingIntent.getBroadcast(uiContext, 0, Intent(ACTION_USB_PERMISSION), 0)
                     val filter = IntentFilter(ACTION_USB_PERMISSION)
-                    context.registerReceiver(usbReceiver, filter)
+                    uiContext.registerReceiver(usbReceiver, filter)
                     permissionContinuation = continuation
                     usbManager.requestPermission(device, permissionIntent)
                     continuation.invokeOnCancellation {
-                        context.unregisterReceiver(usbReceiver)
+                        uiContext.unregisterReceiver(usbReceiver)
                     }
                 }
             } finally {
-                context.unregisterReceiver(usbReceiver)
+                uiContext.unregisterReceiver(usbReceiver)
             }
         }
     }

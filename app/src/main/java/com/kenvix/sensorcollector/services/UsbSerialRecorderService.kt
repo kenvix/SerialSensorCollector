@@ -10,21 +10,22 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.hardware.usb.UsbDevice
 import android.net.Uri
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import android.util.Log
+import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import com.kenvix.sensorcollector.R
 import com.kenvix.sensorcollector.hardware.vendor.SensorDataParser
 import com.kenvix.sensorcollector.ui.MainActivity
+import com.kenvix.sensorcollector.utils.ExcelRecordWriter
 import com.kenvix.sensorcollector.utils.RecordWriter
+import com.kenvix.sensorcollector.utils.getFileSize
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -41,7 +42,6 @@ class UsbSerialRecorderService :
     private lateinit var wakeLock: PowerManager.WakeLock
 
     var uri: Uri? = null
-    var devices: java.util.HashSet<UsbDevice>? = null
     private var recordWriter: RecordWriter? = null
     private var dataParser: SensorDataParser? = null
 
@@ -86,17 +86,15 @@ class UsbSerialRecorderService :
         Log.d("UsbSerialRecorderService", "Service created")
     }
 
-    @Suppress("DEPRECATION", "UNCHECKED_CAST")
+    @Suppress("DEPRECATION")
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
         Log.d("UsbSerialRecorderService", "Service starting")
         // for android <13
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             uri = intent.getParcelableExtra("uri", Uri::class.java)
-            devices = intent.getSerializableExtra("devices", HashSet::class.java) as HashSet<UsbDevice>
             dataParser = intent.getSerializableExtra("parser", HashSet::class.java) as SensorDataParser
         } else {
             uri = intent.getParcelableExtra("uri")
-            devices = intent.getSerializableExtra("devices") as HashSet<UsbDevice>
             dataParser = intent.getSerializableExtra("parser") as SensorDataParser
         }
 
@@ -125,9 +123,32 @@ class UsbSerialRecorderService :
 
     private fun startWorking() {
         isRecording = true
+        val startIntent = Intent("com.kenvix.sensorcollector.ACTION_WORKER_SERVICE_STARTED")
+        sendBroadcast(startIntent)
 
-        val intent = Intent("com.kenvix.sensorcollector.ACTION_WORKER_SERVICE_STARTED")
-        sendBroadcast(intent)
+        launch(Dispatchers.Main) {
+            try {
+                ExcelRecordWriter(context = this@UsbSerialRecorderService, uri!!).also { writer ->
+                    this@UsbSerialRecorderService.recordWriter = writer
+                    writer.setDeviceList(UsbSerial.selectedDevices)
+                    UsbSerial.startReceivingAllAndWait(
+                        dataParser!!,
+                        writer,
+                        dataParser!!.packetHeader
+                    ) { device, serial, data ->
+                        writer.onSensorDataReceived(device, serial, data)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("UsbSerialRecorderService", "Error while recording", e)
+                Toast.makeText(this@UsbSerialRecorderService,
+                    "<!> ERROR while recording: $e", Toast.LENGTH_LONG).show()
+
+                val errorIntent = Intent("com.kenvix.sensorcollector.ACTION_WORKER_SERVICE_FAILED")
+                errorIntent.putExtra("msg", e.toString())
+                sendBroadcast(errorIntent)
+            }
+        }
     }
 
     override fun onBind(intent: Intent): IBinder {
@@ -135,7 +156,7 @@ class UsbSerialRecorderService :
     }
 
     fun tryStopService() {
-        Log.d("UsbSerialRecorderService", "Service stopping (invoker request)")
+        Log.i("UsbSerialRecorderService", "Service stopping (invoker request)")
         // 创建更新的通知内容为“正在保存”
         val updatedNotification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground) // 设置一个小图标
@@ -146,10 +167,32 @@ class UsbSerialRecorderService :
         // 使用相同的NOTIFICATION_ID更新通知
         notificationManager.notify(NOTIFICATION_ID, updatedNotification)
 
-        launch {
-            withContext(Dispatchers.IO) {
-                // 执行阻塞操作
+        launch(Dispatchers.Main) {
+            try {
+                withContext(Dispatchers.IO) {
+                    // 执行阻塞操作
+                    UsbSerial.stopAllSerial()
+                    recordWriter?.close()
 
+                    this@UsbSerialRecorderService.getFileSize(uri!!).also {
+                        Log.d("UsbSerialRecorderService", "Recording saved to $uri, size: $it")
+                        if (it < 1024) {
+                            Log.i("UsbSerialRecorderService", "Recording size is too small, deleting")
+                            runCatching {
+                                contentResolver.delete(uri!!, null, null)
+                            }.onFailure { e ->
+                                Log.e("UsbSerialRecorderService", "Error while deleting recording", e)
+                            }
+                        }
+                    }
+                }
+
+                Toast.makeText(this@UsbSerialRecorderService,
+                    "Recording successfully saved to $uri", Toast.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                Log.e("UsbSerialRecorderService", "Error while saving recordings", e)
+                Toast.makeText(this@UsbSerialRecorderService,
+                    "<!> ERROR while saving recordings: $e", Toast.LENGTH_LONG).show()
             }
 
             if (wakeLock.isHeld)

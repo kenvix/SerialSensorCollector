@@ -54,6 +54,8 @@ class ExcelRecordWriter(val context: Context, val filePath: Uri) :
             bold = true
         })
     }
+
+    private val formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSS")
     private val zone = ZoneId.systemDefault()
 
     private data class SheetPos(val sheet: Sheet, var pos: AtomicInteger)
@@ -64,8 +66,9 @@ class ExcelRecordWriter(val context: Context, val filePath: Uri) :
     override fun setDeviceList(usbDevice: Collection<UsbDevice>) {
         usbDevice.forEach {
             val name = it.deviceName
-                .removePrefix("/dev/bus/usb")
+                .removePrefix("/dev/bus/usb/")
                 .removePrefix("/dev/")
+                .removePrefix("/")
                 .replace("/", "_")
             val sheet = workbook.createSheet(name)
             sheet.createRow(0).apply {
@@ -92,7 +95,7 @@ class ExcelRecordWriter(val context: Context, val filePath: Uri) :
         usbSerialDevice: UsbSerialDevice,
         sensorData: SensorData
     ) {
-        Log.d("ExcelRecordWriter", "SensorDataReceived: ${usbDevice.deviceName} : $sensorData")
+        Log.v("ExcelRecordWriter", "SensorDataReceived: ${usbDevice.deviceName} : $sensorData")
         val (sheet, indexA) = deviceToSheet[usbDevice]
             ?: throw IllegalArgumentException("Device not found in XSSFSheets")
         val index = indexA.getAndIncrement()
@@ -109,14 +112,16 @@ class ExcelRecordWriter(val context: Context, val filePath: Uri) :
             createCell(9).setCellValue(sensorData.angleZ)
             val currentTime = Instant.now()
             createCell(10).setCellValue(currentTime.toEpochMilli().toDouble())
-            createCell(11).setCellValue(ZonedDateTime.ofInstant(currentTime, zone).toString())
-
+            createCell(11).setCellValue(ZonedDateTime.ofInstant(currentTime, zone).format(formatter))
         }
     }
 
     override fun save() {
-        context.contentResolver.openOutputStream(filePath).use { stream ->
+        context.contentResolver.openOutputStream(filePath, "w").use { stream ->
+            if (stream == null)
+                throw IllegalStateException("Cannot open target file stream $filePath")
             workbook.write(stream)
+            stream.flush()
         }
     }
 

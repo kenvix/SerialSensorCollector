@@ -47,7 +47,6 @@ class MainActivity :
     private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var binding: ActivityMainBinding
     internal val serialFinder: SerialPortFinder by lazy { SerialPortFinder() }
-    internal lateinit var usbSerial: UsbSerial
 
     private var service: UsbSerialRecorderService? = null
 
@@ -71,6 +70,11 @@ class MainActivity :
 
                 "com.kenvix.sensorcollector.ACTION_WORKER_SERVICE_STOPPED" ->
                     dismissProgressDialogIfRecordingNow()
+
+                "com.kenvix.sensorcollector.ACTION_WORKER_SERVICE_FAILED" -> {
+                    val msg = intent.getStringExtra("msg")
+                    showAlertDialogIfRecordingFailed(msg)
+                }
             }
         }
     }
@@ -82,11 +86,11 @@ class MainActivity :
         super.onCreate(savedInstanceState)
 
         binding = ActivityMainBinding.inflate(layoutInflater)
-        usbSerial = UsbSerial(this)
 
         setContentView(binding.root)
         setSupportActionBar(binding.toolbar)
 
+        UsbSerial.init(sysContext = applicationContext)
         powerManager = applicationContext.getSystemService(POWER_SERVICE) as PowerManager
 
         val navController = findNavController(R.id.nav_host_fragment_content_main)
@@ -94,18 +98,20 @@ class MainActivity :
         setupActionBarWithNavController(navController, appBarConfiguration)
 
         binding.fab.setOnClickListener { view ->
-            Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
+            Snackbar.make(view, "Written by Kenvix <i@kenvix.com>.\nLicensed under GPLv3 license.", Snackbar.LENGTH_LONG)
                 .setAction("Action", null)
                 .setAnchorView(R.id.fab).show()
         }
 
         acquirePermissions()
         bindUsbSerialWorkerService()
+
         showProgressDialogIfRecordingNow()
         dismissProgressDialogIfRecordingNow()
 
         val filter = IntentFilter().apply {
             addAction("com.kenvix.sensorcollector.ACTION_WORKER_SERVICE_STARTED")
+            addAction("com.kenvix.sensorcollector.ACTION_WORKER_SERVICE_FAILED")
             addAction("com.kenvix.sensorcollector.ACTION_WORKER_SERVICE_STOPPED")
         }
         registerReceiver(broadcastReceiver, filter)
@@ -122,7 +128,7 @@ class MainActivity :
                 .setCancelable(false)
                 .setMessage(getString(R.string.record_activity_info_detailed,
                     service?.uri.toString(),
-                    service?.devices?.joinToString("\n") { it.deviceName }))
+                    UsbSerial.selectedDevices.joinToString("\n") { it.deviceName }))
                 .setNegativeButton("Stop") { dialog, _ ->
                     service?.tryStopService()
                     workingDialog?.dismiss()
@@ -140,6 +146,17 @@ class MainActivity :
                     }
                 }.show()
         }
+    }
+
+    fun showAlertDialogIfRecordingFailed(msg: String?) {
+        service?.tryStopService()
+        AlertDialog.Builder(this)
+            .setTitle("Recording Failed")
+            .setMessage(msg)
+            .setPositiveButton("OK") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .show()
     }
 
     fun dismissProgressDialogIfRecordingNow() {
@@ -174,13 +191,13 @@ class MainActivity :
             }
 
             R.id.action_test_device -> {
-                val grantedNum = usbSerial.selectedDevices
+                val grantedNum = UsbSerial.selectedDevices
                     .asSequence()
                     .map { if (UsbSerialDevice.isSupported(it)) 1 else 0 }
                     .sum()
                 Snackbar.make(
                     binding.root,
-                    "Found ${usbSerial.selectedDevices.size} devices, $grantedNum supported",
+                    "Found ${UsbSerial.selectedDevices.size} devices, $grantedNum supported",
                     Snackbar.LENGTH_LONG
                 )
                     .setAction("Action", null)
