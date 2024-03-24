@@ -65,7 +65,7 @@ class CsvRecordWriter(val context: Context, val filePath: Uri) :
                 .replace("/", "_")
             val file = documentActualTree.createFile("text/csv", "$name.csv")
             val stream = context.contentResolver.openOutputStream(file!!.uri, "w")
-            val s = PrintStream(BufferedOutputStream(stream, 1024 * 1024))
+            val s = PrintStream(BufferedOutputStream(stream, 32 * 1024))
             deviceToStream[it] = SheetPos(file.uri, s, 0)
             s.println("No,AccX,AccY,AccZ,GyroX,GyroY,GyroZ,AngleX,AngleY,AngleZ,TimeStamp,LocalTime")
         }

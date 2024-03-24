@@ -16,6 +16,7 @@ import android.hardware.usb.UsbConstants
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbDeviceConnection
 import android.hardware.usb.UsbManager
+import android.os.Build
 import android.util.Log
 import com.felhr.usbserial.UsbSerialDevice
 import com.kenvix.sensorcollector.hardware.vendor.SensorData
@@ -154,7 +155,14 @@ object UsbSerial : AutoCloseable,
                     val permissionIntent =
                         PendingIntent.getBroadcast(uiContext, 0, Intent(ACTION_USB_PERMISSION), 0)
                     val filter = IntentFilter(ACTION_USB_PERMISSION)
-                    uiContext.registerReceiver(usbReceiver, filter)
+
+                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                        uiContext.registerReceiver(usbReceiver, filter)
+                    } else {
+                        uiContext.registerReceiver(usbReceiver, filter,
+                            Context.RECEIVER_NOT_EXPORTED)
+                    }
+
                     permissionContinuation = continuation
                     usbManager.requestPermission(device, permissionIntent)
                     continuation.invokeOnCancellation {

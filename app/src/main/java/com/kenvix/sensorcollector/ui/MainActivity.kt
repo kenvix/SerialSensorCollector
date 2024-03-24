@@ -115,7 +115,13 @@ class MainActivity :
             addAction("com.kenvix.sensorcollector.ACTION_WORKER_SERVICE_FAILED")
             addAction("com.kenvix.sensorcollector.ACTION_WORKER_SERVICE_STOPPED")
         }
-        registerReceiver(broadcastReceiver, filter)
+
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(broadcastReceiver, filter)
+        } else {
+            registerReceiver(broadcastReceiver, filter, RECEIVER_NOT_EXPORTED)
+        }
     }
 
     override fun onStart() {
