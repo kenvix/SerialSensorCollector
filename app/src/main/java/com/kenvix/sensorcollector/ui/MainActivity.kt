@@ -121,7 +121,7 @@ class MainActivity :
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(broadcastReceiver, filter)
         } else {
-            registerReceiver(broadcastReceiver, filter, RECEIVER_NOT_EXPORTED)
+            registerReceiver(broadcastReceiver, filter, RECEIVER_EXPORTED)
         }
     }
 

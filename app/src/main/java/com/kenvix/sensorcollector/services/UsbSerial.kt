@@ -65,7 +65,7 @@ object UsbSerial : AutoCloseable,
             sysContext.registerReceiver(usbReceiver, filter)
         } else {
             sysContext.registerReceiver(usbReceiver, filter,
-                Context.RECEIVER_NOT_EXPORTED)
+                Context.RECEIVER_EXPORTED)
         }
     }
 
