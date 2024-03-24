@@ -54,4 +54,7 @@
         libero vel nunc consequat, quis tincidunt nisl eleifend. Cras bibendum enim a justo luctus
         vestibulum. Fusce dictum libero quis erat maximus, vitae volutpat diam dignissim.
     </string>
+    <string name="output_format">Output Format</string>
+    <string name="permissions_not_granted">Permissions not granted, some features may not work. \nPlease grant all permissions and press OK to continue.</string>
+    <string name="permissions_required">Permissions required</string>
 </resources>

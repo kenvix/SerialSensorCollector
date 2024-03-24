@@ -34,6 +34,7 @@ import com.kenvix.sensorcollector.hardware.vendor.SensorDataParser
 import com.kenvix.sensorcollector.hardware.vendor.WitHardwareDataParser
 import com.kenvix.sensorcollector.services.UsbSerial
 import com.kenvix.sensorcollector.services.UsbSerialRecorderService
+import com.kenvix.sensorcollector.utils.toArray
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -228,14 +229,15 @@ class MainActivity :
             ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_ADMIN),
             ContextCompat.checkSelfPermission(this, Manifest.permission.FOREGROUND_SERVICE),
             ContextCompat.checkSelfPermission(this, Manifest.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS),
+            ContextCompat.checkSelfPermission(this, Manifest.permission.BODY_SENSORS),
         ).all { it == PackageManager.PERMISSION_GRANTED }
 
         var permsB = true
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             permsB = sequenceOf(
                 ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT),
-                ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_ADVERTISE),
-                ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN)
+                ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN),
+                ContextCompat.checkSelfPermission(this, Manifest.permission.HIGH_SAMPLING_RATE_SENSORS),
             ).all { it == PackageManager.PERMISSION_GRANTED }
         }
 
@@ -247,25 +249,25 @@ class MainActivity :
     @SuppressLint("BatteryLife")
     private fun acquirePermissions() {
         if (!isPermissionsGranted()) {
-            val perms = arrayOf(
+            var perms = listOf(
                 Manifest.permission.ACCESS_FINE_LOCATION,
                 Manifest.permission.ACCESS_COARSE_LOCATION,
                 Manifest.permission.BLUETOOTH_ADMIN,
                 Manifest.permission.FOREGROUND_SERVICE,
                 Manifest.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                Manifest.permission.BODY_SENSORS,
             )
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                perms.plus(
-                    arrayOf(
-                        Manifest.permission.BLUETOOTH_CONNECT,
-                        Manifest.permission.BLUETOOTH_ADVERTISE,
-                        Manifest.permission.BLUETOOTH_SCAN,
-                    )
-                )
+                perms = perms.plus(sequenceOf(
+                    Manifest.permission.BLUETOOTH_CONNECT,
+                    Manifest.permission.BLUETOOTH_ADVERTISE,
+                    Manifest.permission.BLUETOOTH_SCAN,
+                    Manifest.permission.HIGH_SAMPLING_RATE_SENSORS,
+                ))
             }
 
-            requestPermissions(perms, 0)
+            requestPermissions(perms.toTypedArray(), 0)
 
             /////////// Power Optimization Exemption ///////////
             if (!powerManager.isIgnoringBatteryOptimizations(packageName)) {
@@ -289,9 +291,8 @@ class MainActivity :
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (!isPermissionsGranted()) {
             AlertDialog.Builder(this)
-                .setTitle("Permissions required")
-                .setMessage("Permissions not granted, some features may not work. \n" +
-                        "Please grant all permissions and press OK to continue.")
+                .setTitle(getString(R.string.permissions_required))
+                .setMessage(getString(R.string.permissions_not_granted))
                 .setOnDismissListener { acquirePermissions() }
                 .setPositiveButton("OK") { dialog, _ ->
                     dialog.dismiss()

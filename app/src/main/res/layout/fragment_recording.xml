@@ -48,8 +48,8 @@
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:gravity="center_vertical"
-                android:text="Output Format"
-                android:layout_weight="1" />
+                android:text="@string/output_format"
+                android:layout_weight="3" />
         <RadioButton
                 android:id="@+id/output_format_csv"
                 android:layout_width="0dp"
@@ -57,7 +57,7 @@
                 android:text="CSV"
                 android:checked="true"
                 android:enabled="true"
-                android:layout_weight="1"
+                android:layout_weight="2"
                 tools:ignore="HardcodedText" />
 
         <RadioButton
@@ -66,7 +66,7 @@
                 android:layout_height="match_parent"
                 android:text="XLSX"
                 android:checked="false"
-                android:layout_weight="1"
+                android:layout_weight="2"
                 tools:ignore="HardcodedText" />
     </RadioGroup>
 
