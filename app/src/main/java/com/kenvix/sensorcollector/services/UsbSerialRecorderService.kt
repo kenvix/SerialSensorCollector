@@ -23,6 +23,7 @@ import androidx.core.app.NotificationCompat
 import com.kenvix.sensorcollector.R
 import com.kenvix.sensorcollector.hardware.vendor.SensorDataParser
 import com.kenvix.sensorcollector.ui.MainActivity
+import com.kenvix.sensorcollector.utils.CsvRecordWriter
 import com.kenvix.sensorcollector.utils.ExcelRecordWriter
 import com.kenvix.sensorcollector.utils.RecordWriter
 import com.kenvix.sensorcollector.utils.getFileSize
@@ -48,13 +49,16 @@ class UsbSerialRecorderService :
     private lateinit var wakeLock: PowerManager.WakeLock
 
     var uri: Uri? = null
+    private var outputFormat: String = "xlsx"
     private var recordWriter: RecordWriter? = null
     private var dataParser: SensorDataParser? = null
 
     // Binder given to clients
     private val binder = LocalBinder()
     private var workerJob: Job? = null
-    @Volatile var isRecording: Boolean = false
+
+    @Volatile
+    var isRecording: Boolean = false
         private set
 
     private val opMutex = Mutex()
@@ -101,17 +105,21 @@ class UsbSerialRecorderService :
         // for android <13
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             uri = intent.getParcelableExtra("uri", Uri::class.java)
-            dataParser = intent.getSerializableExtra("parser", HashSet::class.java) as SensorDataParser
+            dataParser =
+                intent.getSerializableExtra("parser", HashSet::class.java) as SensorDataParser
         } else {
             uri = intent.getParcelableExtra("uri")
             dataParser = intent.getSerializableExtra("parser") as SensorDataParser
         }
+        outputFormat = intent.getStringExtra("output_format") ?: "xlsx"
 
         val mainIntent = Intent(this, MainActivity::class.java).apply {
             setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         }
-        val pendingIntent = PendingIntent.getActivity(this, 0, mainIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val pendingIntent = PendingIntent.getActivity(
+            this, 0, mainIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 
         // 创建通知
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
@@ -136,18 +144,27 @@ class UsbSerialRecorderService :
         isRecording = true
         val startIntent = Intent("com.kenvix.sensorcollector.ACTION_WORKER_SERVICE_STARTED")
         sendBroadcast(startIntent)
-        this.recordWriter = ExcelRecordWriter(context = this, uri!!)
 
         workerJob = launch(Dispatchers.Main) {
             try {
-                recordWriter!!.also { writer ->
-                    writer.setDeviceList(UsbSerial.selectedDevices)
-                    UsbSerial.startReceivingAllAndWait(
-                        dataParser!!,
-                        writer,
-                        dataParser!!.packetHeader
-                    ) { device, serial, data ->
-                        writer.onSensorDataReceived(device, serial, data)
+                this@UsbSerialRecorderService.recordWriter = withContext(Dispatchers.IO) {
+                    when (outputFormat) {
+                        "xlsx" -> ExcelRecordWriter(context = this@UsbSerialRecorderService, uri!!)
+                        "csv" -> CsvRecordWriter(context = this@UsbSerialRecorderService, uri!!)
+                        else -> throw IllegalArgumentException("Invalid output format: $outputFormat")
+                    }
+                }
+
+                withContext(Dispatchers.IO) {
+                    recordWriter!!.also { writer ->
+                        writer.setDeviceList(UsbSerial.selectedDevices)
+                        UsbSerial.startReceivingAllAndWait(
+                            dataParser!!,
+                            writer,
+                            dataParser!!.packetHeader
+                        ) { device, serial, data ->
+                            writer.onSensorDataReceived(device, serial, data)
+                        }
                     }
                 }
             } catch (e: CancellationException) {
@@ -155,8 +172,10 @@ class UsbSerialRecorderService :
                 throw e
             } catch (e: Exception) {
                 Log.e("UsbSerialRecorderService", "Error while recording", e)
-                Toast.makeText(this@UsbSerialRecorderService,
-                    "<!> ERROR while recording: $e", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    this@UsbSerialRecorderService,
+                    "<!> ERROR while recording: $e", Toast.LENGTH_LONG
+                ).show()
 
                 val errorIntent = Intent("com.kenvix.sensorcollector.ACTION_WORKER_SERVICE_FAILED")
                 errorIntent.putExtra("msg", e.toString())
@@ -193,25 +212,38 @@ class UsbSerialRecorderService :
                     workerJob?.join()
                     recordWriter?.close()
 
-                    this@UsbSerialRecorderService.getFileSize(uri!!).also {
-                        Log.d("UsbSerialRecorderService", "Recording saved to $uri, size: $it")
-                        if (it < 1024) {
-                            Log.i("UsbSerialRecorderService", "Recording size is too small, deleting")
-                            runCatching {
-                                contentResolver.delete(uri!!, null, null)
-                            }.onFailure { e ->
-                                Log.e("UsbSerialRecorderService", "Error while deleting recording", e)
+                    if (outputFormat == "xlsx") {
+                        this@UsbSerialRecorderService.getFileSize(uri!!).also {
+                            Log.d("UsbSerialRecorderService", "Recording saved to $uri, size: $it")
+                            if (it < 1024) {
+                                Log.i(
+                                    "UsbSerialRecorderService",
+                                    "Recording size is too small, deleting"
+                                )
+                                runCatching {
+                                    contentResolver.delete(uri!!, null, null)
+                                }.onFailure { e ->
+                                    Log.e(
+                                        "UsbSerialRecorderService",
+                                        "Error while deleting recording",
+                                        e
+                                    )
+                                }
                             }
                         }
                     }
                 }
 
-                Toast.makeText(this@UsbSerialRecorderService,
-                    "Recording successfully saved to $uri", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    this@UsbSerialRecorderService,
+                    "Recording successfully saved to $uri", Toast.LENGTH_LONG
+                ).show()
             } catch (e: Exception) {
                 Log.e("UsbSerialRecorderService", "Error while saving recordings", e)
-                Toast.makeText(this@UsbSerialRecorderService,
-                    "<!> ERROR while saving recordings: $e", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    this@UsbSerialRecorderService,
+                    "<!> ERROR while saving recordings: $e", Toast.LENGTH_LONG
+                ).show()
             } finally {
                 if (wakeLock.isHeld)
                     wakeLock.release()
@@ -225,6 +257,7 @@ class UsbSerialRecorderService :
             }
         }
     }
+
     override fun onDestroy() {
         Log.d("UsbSerialRecorderService", "Service destroying")
         super.onDestroy()

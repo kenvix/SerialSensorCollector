@@ -37,6 +37,39 @@
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
+    <RadioGroup
+            android:id="@+id/output_format_group"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingStart="15dp"
+            android:paddingEnd="8dp">
+        <TextView
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical"
+                android:text="Output Format"
+                android:layout_weight="1" />
+        <RadioButton
+                android:id="@+id/output_format_csv"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:text="CSV"
+                android:checked="true"
+                android:enabled="true"
+                android:layout_weight="1"
+                tools:ignore="HardcodedText" />
+
+        <RadioButton
+                android:id="@+id/output_format_xlsx"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:text="XLSX"
+                android:checked="false"
+                android:layout_weight="1"
+                tools:ignore="HardcodedText" />
+    </RadioGroup>
+
     <TextView
             android:layout_height="42dp"
             android:paddingStart="15dp"

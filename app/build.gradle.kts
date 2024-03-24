@@ -51,7 +51,10 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core")
+    implementation("org.apache.xmlbeans:xmlbeans:5.2.0")
+    implementation("javax.xml.stream:stax-api:1.0")
+    implementation("com.fasterxml:aalto-xml:1.2.2")
 
     implementation(libs.serialport)
     implementation(libs.usbserial)

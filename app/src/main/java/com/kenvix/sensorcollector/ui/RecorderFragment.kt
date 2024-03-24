@@ -45,7 +45,8 @@ class RecorderFragment : Fragment() {
     private val binding get() = _binding!!
     private lateinit var activity: MainActivity
     private var safContinuation: CancellableContinuation<Uri?>? = null
-    private lateinit var safCreateFileLauncher: ActivityResultLauncher<String>
+    private lateinit var safCreateFileLauncherXlsx: ActivityResultLauncher<String>
+    private lateinit var safCreateFileLauncherCsv: ActivityResultLauncher<Uri?>
 
 
     override fun onCreateView(
@@ -59,12 +60,21 @@ class RecorderFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         activity = requireActivity() as MainActivity
-        safCreateFileLauncher = registerForActivityResult(
+
+        safCreateFileLauncherXlsx = registerForActivityResult(
             ActivityResultContracts
                 .CreateDocument("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         ) { uri ->
             // Handle the returned Uri
-            Log.d(this::class.simpleName, "Created file: $uri")
+            Log.d(this::class.simpleName, "SAF Created output xlsx file: $uri")
+            safContinuation?.resume(uri)
+        }
+
+        safCreateFileLauncherCsv = registerForActivityResult(
+            ActivityResultContracts.OpenDocumentTree()
+        ) { uri ->
+            // Handle the returned Uri
+            Log.d(this::class.simpleName, "SAF Selected Output Directory: $uri")
             safContinuation?.resume(uri)
         }
 
@@ -142,12 +152,20 @@ class RecorderFragment : Fragment() {
                     withUIOperationDisabledA {
 
                         try {
-                            val uri = safCreateFile()
+                            val outputFormat =
+                                when (binding.outputFormatGroup.checkedRadioButtonId) {
+                                    R.id.output_format_csv -> "csv"
+                                    R.id.output_format_xlsx -> "xlsx"
+                                    else -> throw BusinessException("Unknown output format")
+                                }
+
+                            val uri = safCreateFile(outputFormat)
                                 ?: throw BusinessException("You must choose the save path")
 
                             val intent = Intent(context, UsbSerialRecorderService::class.java)
                             intent.putExtra("uri", uri)
                             intent.putExtra("parser", activity.dataParser)
+                            intent.putExtra("output_format", outputFormat)
                             ContextCompat.startForegroundService(requireContext(), intent)
                         } catch (e: Exception) {
                             UsbSerial.stopAllSerial()
@@ -179,12 +197,15 @@ class RecorderFragment : Fragment() {
 //        }
     }
 
-    private suspend fun safCreateFile(): Uri? {
+    private suspend fun safCreateFile(outputFormat: String): Uri? {
         val filename = LocalDateTime.now().toString().replace(':', '_') + ".xlsx"
         return suspendCancellableCoroutine<Uri?> { continuation ->
             // 启动文件创建流程
             safContinuation = continuation
-            safCreateFileLauncher.launch(filename)
+            if (outputFormat == "xlsx")
+                safCreateFileLauncherXlsx.launch(filename)
+            else
+                safCreateFileLauncherCsv.launch(Uri.parse("content://com.android.externalstorage.documents/tree/primary%3ADocuments"))
         }
     }
 

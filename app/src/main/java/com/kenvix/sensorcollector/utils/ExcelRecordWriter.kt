@@ -9,23 +9,19 @@ package com.kenvix.sensorcollector.utils
 import android.content.Context
 import android.hardware.usb.UsbDevice
 import android.net.Uri
-import android.util.Log
+import androidx.documentfile.provider.DocumentFile
 import com.felhr.usbserial.UsbSerialDevice
 import com.kenvix.sensorcollector.hardware.vendor.SensorData
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import org.apache.poi.ss.usermodel.FillPatternType
 import org.apache.poi.ss.usermodel.IndexedColors
 import org.apache.poi.ss.usermodel.Sheet
-import org.apache.poi.xssf.streaming.SXSSFSheet
-import org.apache.poi.xssf.streaming.SXSSFWorkbook
-import org.apache.poi.xssf.usermodel.XSSFSheet
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
+import java.io.BufferedOutputStream
 import java.io.Closeable
+import java.io.PrintStream
 import java.time.Instant
-import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.util.concurrent.atomic.AtomicInteger
@@ -39,6 +35,72 @@ interface RecordWriter : Closeable {
     )
 
     fun save()
+}
+
+class CsvRecordWriter(val context: Context, val filePath: Uri) :
+    RecordWriter,
+    CoroutineScope by CoroutineScope(CoroutineName("CsvRecordWriter")) {
+
+    private val deviceToStream = mutableMapOf<UsbDevice, SheetPos>()
+    private lateinit var documentRootTree: DocumentFile
+    private lateinit var documentActualTree: DocumentFile
+    private val formatter =
+        java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSS")
+
+    private val dirNameFormatter =
+        java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd_HH_mm_ss")
+
+    private data class SheetPos(val uri: Uri, val stream: PrintStream, var pos: Int)
+
+    override fun setDeviceList(usbDevice: Collection<UsbDevice>) {
+        // Make directory
+        documentRootTree = DocumentFile.fromTreeUri(context, filePath)!!
+        documentActualTree = documentRootTree.createDirectory(ZonedDateTime.now().format(dirNameFormatter))!!
+
+        usbDevice.forEach {
+            val name = it.deviceName
+                .removePrefix("/dev/bus/usb/")
+                .removePrefix("/dev/")
+                .removePrefix("/")
+                .replace("/", "_")
+            val file = documentActualTree.createFile("text/csv", "$name.csv")
+            val stream = context.contentResolver.openOutputStream(file!!.uri, "w")
+            val s = PrintStream(BufferedOutputStream(stream, 1024 * 1024))
+            deviceToStream[it] = SheetPos(file.uri, s, 0)
+            s.println("No,AccX,AccY,AccZ,GyroX,GyroY,GyroZ,AngleX,AngleY,AngleZ,TimeStamp,LocalTime")
+        }
+    }
+
+    override fun onSensorDataReceived(
+        usbDevice: UsbDevice,
+        usbSerialDevice: UsbSerialDevice,
+        sensorData: SensorData
+    ) {
+        // Log.v("CsvRecordWriter", "SensorDataReceived: ${usbDevice.deviceName} : $sensorData")
+        val pos = deviceToStream[usbDevice]
+            ?: throw IllegalArgumentException("Device not found in PrintStreams")
+        pos.pos++
+        pos.stream.println(
+            "${pos.pos},${sensorData.accX},${sensorData.accY},${sensorData.accZ}," +
+                    "${sensorData.gyroX},${sensorData.gyroY},${sensorData.gyroZ}," +
+                    "${sensorData.angleX},${sensorData.angleY},${sensorData.angleZ}," +
+                    "${Instant.now().toEpochMilli()},${ZonedDateTime.now().format(formatter)}"
+        )
+    }
+
+    override fun save() {
+        deviceToStream.forEach { (device, pair) ->
+            pair.stream.flush()
+        }
+    }
+
+    override fun close() {
+        save()
+        deviceToStream.forEach { (device, pair) ->
+            pair.stream.close()
+        }
+    }
+
 }
 
 class ExcelRecordWriter(val context: Context, val filePath: Uri) :
@@ -55,7 +117,8 @@ class ExcelRecordWriter(val context: Context, val filePath: Uri) :
         })
     }
 
-    private val formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSS")
+    private val formatter =
+        java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSS")
     private val zone = ZoneId.systemDefault()
 
     private data class SheetPos(val sheet: Sheet, var pos: AtomicInteger)
@@ -112,7 +175,9 @@ class ExcelRecordWriter(val context: Context, val filePath: Uri) :
             createCell(9).setCellValue(sensorData.angleZ)
             val currentTime = Instant.now()
             createCell(10).setCellValue(currentTime.toEpochMilli().toDouble())
-            createCell(11).setCellValue(ZonedDateTime.ofInstant(currentTime, zone).format(formatter))
+            createCell(11).setCellValue(
+                ZonedDateTime.ofInstant(currentTime, zone).format(formatter)
+            )
         }
     }
 
@@ -120,7 +185,12 @@ class ExcelRecordWriter(val context: Context, val filePath: Uri) :
         context.contentResolver.openOutputStream(filePath, "w").use { stream ->
             if (stream == null)
                 throw IllegalStateException("Cannot open target file stream $filePath")
-            workbook.write(stream)
+
+            stream.buffered().also {  s  ->
+                workbook.write(s)
+                s.flush()
+            }
+
             stream.flush()
         }
     }
