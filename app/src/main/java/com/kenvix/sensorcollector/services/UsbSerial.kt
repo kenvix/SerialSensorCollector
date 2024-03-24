@@ -22,13 +22,17 @@ import com.kenvix.sensorcollector.hardware.vendor.SensorData
 import com.kenvix.sensorcollector.hardware.vendor.SensorDataParser
 import com.kenvix.sensorcollector.utils.RecordWriter
 import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -43,8 +47,8 @@ object UsbSerial : AutoCloseable,
     CoroutineScope by CoroutineScope(CoroutineName("UsbSerial")) {
     private lateinit var usbManager: UsbManager
     private var permissionContinuation: CancellableContinuation<Boolean>? = null
-    private val opMutex = Mutex()
-    val openedSerialDevices: MutableMap<UsbDevice, Pair<UsbSerialDevice, Deferred<Unit>>> =
+    val opMutex = Mutex()
+    val openedSerialDevices: MutableMap<UsbDevice, Pair<UsbSerialDevice, Job>> =
         mutableMapOf()
 
     private const val ACTION_USB_PERMISSION = "com.kenvix.sensorcollector.USB_PERMISSION"
@@ -73,16 +77,16 @@ object UsbSerial : AutoCloseable,
         dataParser: SensorDataParser,
         delimiter: Byte,
         onReceived: (UsbDevice, UsbSerialDevice, SensorData) -> Unit
-    ): Deferred<Unit> {
+    ): Job {
         val usbConnection: UsbDeviceConnection = usbManager.openDevice(device)
-        var job: Deferred<Unit>
+        var job: Job
 
         val serial: UsbSerialDevice =
             UsbSerialDevice.createUsbSerialDevice(device, usbConnection).apply {
                 syncOpen()
                 dataParser.prepareSerialDevice(device, this)
 
-                job = async(Dispatchers.IO + coroutineContext) {
+                job = launch(Dispatchers.IO + coroutineContext) {
                     val inputStream = DataInputStream(BufferedInputStream(inputStream))
                     try {
                         while (isActive) {
@@ -91,8 +95,11 @@ object UsbSerial : AutoCloseable,
                                 dataParser.onDataInput(device, this@apply, inputStream, onReceived)
                             }
                         }
-                    } catch (ignored: EOFException) {
+                    } catch (_: EOFException) {
                         Log.i("UsbSerial", "EOF of device ${device.deviceName}")
+                    } catch (e: CancellationException) {
+                        Log.i("UsbSerial", "Cancellation of Worker of device ${device.deviceName}")
+                        throw e
                     }
                 }
             }
@@ -121,7 +128,7 @@ object UsbSerial : AutoCloseable,
             }
         }
 
-        jobs.awaitAll()
+        jobs.joinAll()
     }
 
     fun getAvailableUsbSerialDevices(): List<UsbDevice> {
@@ -169,8 +176,9 @@ object UsbSerial : AutoCloseable,
         val iterator = openedSerialDevices.iterator()
         while (iterator.hasNext()) {
             val entry = iterator.next()
-            entry.value.second.cancel()
-            entry.value.first.close()
+            val (device, job) = entry.value
+            device.close()
+            job.cancel()
             iterator.remove()
         }
     }

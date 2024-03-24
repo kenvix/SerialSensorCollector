@@ -26,10 +26,16 @@ import com.kenvix.sensorcollector.ui.MainActivity
 import com.kenvix.sensorcollector.utils.ExcelRecordWriter
 import com.kenvix.sensorcollector.utils.RecordWriter
 import com.kenvix.sensorcollector.utils.getFileSize
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.util.HashSet
 
@@ -47,8 +53,11 @@ class UsbSerialRecorderService :
 
     // Binder given to clients
     private val binder = LocalBinder()
-    var isRecording: Boolean = false
+    private var workerJob: Job? = null
+    @Volatile var isRecording: Boolean = false
         private set
+
+    private val opMutex = Mutex()
 
     // Class used for the client Binder.
     inner class LocalBinder : Binder() {
@@ -122,14 +131,16 @@ class UsbSerialRecorderService :
     }
 
     private fun startWorking() {
+        if (isRecording) return
+
         isRecording = true
         val startIntent = Intent("com.kenvix.sensorcollector.ACTION_WORKER_SERVICE_STARTED")
         sendBroadcast(startIntent)
+        this.recordWriter = ExcelRecordWriter(context = this, uri!!)
 
-        launch(Dispatchers.Main) {
+        workerJob = launch(Dispatchers.Main) {
             try {
-                ExcelRecordWriter(context = this@UsbSerialRecorderService, uri!!).also { writer ->
-                    this@UsbSerialRecorderService.recordWriter = writer
+                recordWriter!!.also { writer ->
                     writer.setDeviceList(UsbSerial.selectedDevices)
                     UsbSerial.startReceivingAllAndWait(
                         dataParser!!,
@@ -139,6 +150,9 @@ class UsbSerialRecorderService :
                         writer.onSensorDataReceived(device, serial, data)
                     }
                 }
+            } catch (e: CancellationException) {
+                Log.i("UsbSerialRecorderService", "Worker job stopped (canceled)")
+                throw e
             } catch (e: Exception) {
                 Log.e("UsbSerialRecorderService", "Error while recording", e)
                 Toast.makeText(this@UsbSerialRecorderService,
@@ -155,23 +169,28 @@ class UsbSerialRecorderService :
         return binder
     }
 
-    fun tryStopService() {
-        Log.i("UsbSerialRecorderService", "Service stopping (invoker request)")
-        // 创建更新的通知内容为“正在保存”
-        val updatedNotification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground) // 设置一个小图标
-            .setContentTitle(getString(R.string.record_service_channel_name))
-            .setContentText(getString(R.string.record_service_channel_stopping, uri.toString()))
-            .build()
+    suspend fun tryStopService() {
+        if (!isRecording) return
+        opMutex.withLock {
+            if (!isRecording) return
+            Log.i("UsbSerialRecorderService", "Service stopping (invoker request)")
 
-        // 使用相同的NOTIFICATION_ID更新通知
-        notificationManager.notify(NOTIFICATION_ID, updatedNotification)
+            // 创建更新的通知内容为“正在保存”
+            val updatedNotification = NotificationCompat.Builder(this, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_launcher_foreground) // 设置一个小图标
+                .setContentTitle(getString(R.string.record_service_channel_name))
+                .setContentText(getString(R.string.record_service_channel_stopping, uri.toString()))
+                .build()
 
-        launch(Dispatchers.Main) {
+            // 使用相同的NOTIFICATION_ID更新通知
+            notificationManager.notify(NOTIFICATION_ID, updatedNotification)
+
             try {
+                workerJob?.cancel()
                 withContext(Dispatchers.IO) {
                     // 执行阻塞操作
                     UsbSerial.stopAllSerial()
+                    workerJob?.join()
                     recordWriter?.close()
 
                     this@UsbSerialRecorderService.getFileSize(uri!!).also {
@@ -193,18 +212,19 @@ class UsbSerialRecorderService :
                 Log.e("UsbSerialRecorderService", "Error while saving recordings", e)
                 Toast.makeText(this@UsbSerialRecorderService,
                     "<!> ERROR while saving recordings: $e", Toast.LENGTH_LONG).show()
+            } finally {
+                if (wakeLock.isHeld)
+                    wakeLock.release()
+
+                workerJob = null
+                recordWriter = null
+                isRecording = false
+                val intent = Intent("com.kenvix.sensorcollector.ACTION_WORKER_SERVICE_STOPPED")
+                sendBroadcast(intent)
+                stopSelf()
             }
-
-            if (wakeLock.isHeld)
-                wakeLock.release()
-
-            isRecording = false
-            val intent = Intent("com.kenvix.sensorcollector.ACTION_WORKER_SERVICE_STOPPED")
-            sendBroadcast(intent)
-            stopSelf()
         }
     }
-
     override fun onDestroy() {
         Log.d("UsbSerialRecorderService", "Service destroying")
         super.onDestroy()

@@ -37,6 +37,7 @@ import com.kenvix.sensorcollector.services.UsbSerialRecorderService
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 
 class MainActivity :
@@ -130,33 +131,37 @@ class MainActivity :
                     service?.uri.toString(),
                     UsbSerial.selectedDevices.joinToString("\n") { it.deviceName }))
                 .setNegativeButton("Stop") { dialog, _ ->
-                    service?.tryStopService()
-                    workingDialog?.dismiss()
-                    workingDialog = AlertDialog.Builder(this)
-                        .setTitle("Stopping")
-                        .setMessage(getString(R.string.record_service_channel_stopping, service?.uri.toString()))
-                        .setCancelable(false)
-                        .create()
-
-                    if (service?.isRecording != true) {
+                    launch(Dispatchers.Main) {
+                        service?.tryStopService()
                         workingDialog?.dismiss()
-                        workingDialog = null
-                    } else {
-                        workingDialog?.show()
+                        workingDialog = AlertDialog.Builder(this@MainActivity)
+                            .setTitle("Stopping")
+                            .setMessage(getString(R.string.record_service_channel_stopping, service?.uri.toString()))
+                            .setCancelable(false)
+                            .create()
+
+                        if (service?.isRecording != true) {
+                            workingDialog?.dismiss()
+                            workingDialog = null
+                        } else {
+                            workingDialog?.show()
+                        }
                     }
                 }.show()
         }
     }
 
     fun showAlertDialogIfRecordingFailed(msg: String?) {
-        service?.tryStopService()
-        AlertDialog.Builder(this)
-            .setTitle("Recording Failed")
-            .setMessage(msg)
-            .setPositiveButton("OK") { dialog, _ ->
-                dialog.dismiss()
-            }
-            .show()
+        launch(Dispatchers.Main) {
+            service?.tryStopService()
+            AlertDialog.Builder(this@MainActivity)
+                .setTitle("Recording Failed")
+                .setMessage(msg)
+                .setPositiveButton("OK") { dialog, _ ->
+                    dialog.dismiss()
+                }
+                .show()
+        }
     }
 
     fun dismissProgressDialogIfRecordingNow() {

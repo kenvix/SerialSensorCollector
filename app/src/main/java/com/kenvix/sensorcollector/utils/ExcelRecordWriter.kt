@@ -45,7 +45,7 @@ class ExcelRecordWriter(val context: Context, val filePath: Uri) :
     RecordWriter,
     CoroutineScope by CoroutineScope(CoroutineName("ExcelRecordWriter")) {
 
-    private val workbook = XSSFWorkbook() // or SXSSFWorkbook
+    private val workbook = XSSFWorkbook() // XSSFWorkbook or SXSSFWorkbook
     private val deviceToSheet = mutableMapOf<UsbDevice, SheetPos>()
     private val cellStyleHeader = workbook.createCellStyle().apply {
         fillForegroundColor = IndexedColors.GREY_25_PERCENT.index
@@ -95,7 +95,7 @@ class ExcelRecordWriter(val context: Context, val filePath: Uri) :
         usbSerialDevice: UsbSerialDevice,
         sensorData: SensorData
     ) {
-        Log.v("ExcelRecordWriter", "SensorDataReceived: ${usbDevice.deviceName} : $sensorData")
+        // Log.v("ExcelRecordWriter", "SensorDataReceived: ${usbDevice.deviceName} : $sensorData")
         val (sheet, indexA) = deviceToSheet[usbDevice]
             ?: throw IllegalArgumentException("Device not found in XSSFSheets")
         val index = indexA.getAndIncrement()
