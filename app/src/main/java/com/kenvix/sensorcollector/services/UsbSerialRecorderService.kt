@@ -106,7 +106,7 @@ class UsbSerialRecorderService :
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             uri = intent.getParcelableExtra("uri", Uri::class.java)
             dataParser =
-                intent.getSerializableExtra("parser", HashSet::class.java) as SensorDataParser
+                intent.getSerializableExtra("parser", SensorDataParser::class.java)
         } else {
             uri = intent.getParcelableExtra("uri")
             dataParser = intent.getSerializableExtra("parser") as SensorDataParser

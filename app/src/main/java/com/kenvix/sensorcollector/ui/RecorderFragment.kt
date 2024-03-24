@@ -96,14 +96,25 @@ class RecorderFragment : Fragment() {
                         // request permission of this usb device
                         activity.launch {
                             withUIOperationDisabledA {
-                                granted = UsbSerial.requestPermission(requireContext(), device)
-                                binding.serialList.setItemChecked(
-                                    position,
-                                    granted
-                                )
+                                try {
+                                    granted = UsbSerial.requestPermission(requireContext(), device)
+                                    binding.serialList.setItemChecked(
+                                        position,
+                                        granted
+                                    )
 
-                                if (granted)
-                                    UsbSerial.selectedDevices.add(device)
+                                    if (granted)
+                                        UsbSerial.selectedDevices.add(device)
+                                } catch (e: Exception) {
+                                    Log.w(this::class.simpleName, "USB Permission Request Failed", e)
+                                    AlertDialog.Builder(requireContext())
+                                        .setTitle("USB Permission Request Failed")
+                                        .setMessage(e.toString())
+                                        .setPositiveButton("OK") { dialog, _ ->
+                                            dialog.dismiss()
+                                        }
+                                        .show()
+                                }
                             }
                         }
                     } else {
