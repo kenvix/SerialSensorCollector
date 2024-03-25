@@ -293,9 +293,13 @@ class MainActivity :
             AlertDialog.Builder(this)
                 .setTitle(getString(R.string.permissions_required))
                 .setMessage(getString(R.string.permissions_not_granted))
-                .setOnDismissListener { acquirePermissions() }
-                .setPositiveButton("OK") { dialog, _ ->
+                .setCancelable(false)
+                .setNegativeButton("Ignore") { dialog, _ ->
                     dialog.dismiss()
+                }
+                .setPositiveButton("OK. Try again") { dialog, _ ->
+                    dialog.dismiss()
+                    acquirePermissions()
                 }.show()
         }
     }
