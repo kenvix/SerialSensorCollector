@@ -98,13 +98,10 @@ class RecorderFragment : Fragment() {
                             withUIOperationDisabledA {
                                 try {
                                     granted = UsbSerial.requestPermission(requireContext(), device)
-                                    binding.serialList.setItemChecked(
-                                        position,
-                                        granted
-                                    )
-
                                     if (granted)
                                         UsbSerial.selectedDevices.add(device)
+
+                                    binding.serialList.setItemChecked(position, granted)
                                 } catch (e: Exception) {
                                     Log.w(this::class.simpleName, "USB Permission Request Failed", e)
                                     AlertDialog.Builder(requireContext())

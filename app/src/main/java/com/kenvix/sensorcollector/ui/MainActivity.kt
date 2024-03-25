@@ -93,6 +93,7 @@ class MainActivity :
         setSupportActionBar(binding.toolbar)
 
         UsbSerial.init(sysContext = applicationContext)
+        UsbSerial.registerUsbReceiver(uiContext = this)
         powerManager = applicationContext.getSystemService(POWER_SERVICE) as PowerManager
 
         val navController = findNavController(R.id.nav_host_fragment_content_main)

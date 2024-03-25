@@ -84,7 +84,7 @@ class CsvRecordWriter(val context: Context, val filePath: Uri) :
             "${pos.pos},${sensorData.accX},${sensorData.accY},${sensorData.accZ}," +
                     "${sensorData.gyroX},${sensorData.gyroY},${sensorData.gyroZ}," +
                     "${sensorData.angleX},${sensorData.angleY},${sensorData.angleZ}," +
-                    "${Instant.now().toEpochMilli()},${ZonedDateTime.now().format(formatter)}"
+                    "${Instant.now().toEpochMilli()},\"${ZonedDateTime.now().format(formatter)}\""
         )
     }
 

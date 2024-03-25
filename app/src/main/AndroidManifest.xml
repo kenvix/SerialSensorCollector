@@ -33,6 +33,7 @@
 
     <uses-permission android:name="com.kenvix.android.GENERIC" />
 
+    <uses-feature android:name="android.hardware.usb.host" android:required="false" />
 
     <application
             android:allowBackup="true"

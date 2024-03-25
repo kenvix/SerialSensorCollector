@@ -59,25 +59,35 @@ object UsbSerial : AutoCloseable,
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     fun init(sysContext: Context) {
         usbManager = sysContext.getSystemService(Context.USB_SERVICE) as UsbManager
-        val filter = IntentFilter(ACTION_USB_PERMISSION)
 
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-            sysContext.registerReceiver(usbReceiver, filter)
-        } else {
-            sysContext.registerReceiver(usbReceiver, filter,
-                Context.RECEIVER_EXPORTED)
+        try {
+            val filter = IntentFilter(ACTION_USB_PERMISSION)
+
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                sysContext.registerReceiver(usbReceiver, filter)
+            } else {
+                sysContext.registerReceiver(
+                    usbReceiver, filter,
+                    Context.RECEIVER_EXPORTED
+                )
+            }
+        } catch (e: IllegalStateException) {
+            Log.w("UsbSerial", "Failed to register USB receiver", e)
         }
+    }
+
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
+    fun registerUsbReceiver(uiContext: Context) {
+
     }
 
     val usbReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action == ACTION_USB_PERMISSION) {
-                permissionContinuation!!.resume(
-                    intent.getBooleanExtra(
-                        UsbManager.EXTRA_PERMISSION_GRANTED,
-                        false
-                    )
-                )
+                synchronized(this) {
+                    val granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)
+                    permissionContinuation!!.resume(granted)
+                }
             }
         }
     }
@@ -157,11 +167,13 @@ object UsbSerial : AutoCloseable,
     }
 
     suspend fun requestPermission(uiContext: Context, device: UsbDevice): Boolean {
-        opMutex.withLock {
-            return suspendCancellableCoroutine { continuation ->
+        return opMutex.withLock {
+            suspendCancellableCoroutine { continuation ->
                 val permissionIntent =
-                    PendingIntent.getBroadcast(uiContext, 0, Intent(ACTION_USB_PERMISSION),
-                        PendingIntent.FLAG_IMMUTABLE)
+                    PendingIntent.getBroadcast(
+                        uiContext, 0, Intent(ACTION_USB_PERMISSION),
+                        PendingIntent.FLAG_IMMUTABLE
+                    )
                 permissionContinuation = continuation
                 usbManager.requestPermission(device, permissionIntent)
             }
