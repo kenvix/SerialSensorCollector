@@ -8,6 +8,7 @@ package com.kenvix.sensorcollector.hardware.vendor
 
 import android.hardware.usb.UsbDevice
 import com.felhr.usbserial.UsbSerialDevice
+import com.google.common.io.LittleEndianDataInputStream
 import com.kenvix.sensorcollector.hardware.vendor.SensorData.Companion.GRAVITY
 import java.io.DataInputStream
 
@@ -26,26 +27,19 @@ class WitHardwareDataParser : SensorDataParser {
         onReceived: (UsbDevice, UsbSerialDevice, SensorData) -> Unit
     ) {
         val flag = data.readByte()
-        val accX =
-            ((data.readByte().toInt()) + (data.readByte().toInt() shl 8)) / 32768.0 * 16.0 * GRAVITY
-        val accY =
-            ((data.readByte().toInt()) + (data.readByte().toInt() shl 8)) / 32768.0 * 16.0 * GRAVITY
-        val accZ =
-            ((data.readByte().toInt()) + (data.readByte().toInt() shl 8)) / 32768.0 * 16.0 * GRAVITY
+        val dataLE = LittleEndianDataInputStream(data)
 
-        val gyroX =
-            ((data.readByte().toInt()) + (data.readByte().toInt() shl 8)) / 32768.0 * 2000.0
-        val gyroY =
-            ((data.readByte().toInt()) + (data.readByte().toInt() shl 8)) / 32768.0 * 2000.0
-        val gyroZ =
-            ((data.readByte().toInt()) + (data.readByte().toInt() shl 8)) / 32768.0 * 2000.0
+        val accX = dataLE.readShort() / 32768.0 * 16.0 * GRAVITY
+        val accY = dataLE.readShort() / 32768.0 * 16.0 * GRAVITY
+        val accZ = dataLE.readShort() / 32768.0 * 16.0 * GRAVITY
 
-        val angleX =
-            ((data.readByte().toInt()) + (data.readByte().toInt() shl 8)) / 32768.0 * 180.0
-        val angleY =
-            ((data.readByte().toInt()) + (data.readByte().toInt() shl 8)) / 32768.0 * 180.0
-        val angleZ =
-            ((data.readByte().toInt()) + (data.readByte().toInt() shl 8)) / 32768.0 * 180.0
+        val gyroX = dataLE.readShort() / 32768.0 * 2000.0
+        val gyroY = dataLE.readShort() / 32768.0 * 2000.0
+        val gyroZ = dataLE.readShort() / 32768.0 * 2000.0
+
+        val angleX = dataLE.readShort() / 32768.0 * 180.0
+        val angleY = dataLE.readShort() / 32768.0 * 180.0
+        val angleZ = dataLE.readShort() / 32768.0 * 180.0
 
         val sensorData = SensorData(
             accX, accY, accZ,
