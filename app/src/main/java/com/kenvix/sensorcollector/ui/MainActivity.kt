@@ -105,7 +105,7 @@ class MainActivity :
         val navController = findNavController(R.id.nav_host_fragment_content_main)
         appBarConfiguration = AppBarConfiguration(
             setOf(
-                R.id.nav_home, R.id.nav_gallery, R.id.nav_slideshow
+                R.id.nav_home, R.id.nav_bluetooth_beacon_scanner, R.id.nav_usb_serial_sensor_recorder
             ), drawerLayout
         )
 

@@ -68,4 +68,8 @@
     <string name="permissions_not_granted">Permissions not granted, some features may not work. \nPlease grant all permissions and press OK to continue.</string>
     <string name="permissions_required">Permissions required</string>
     <string name="about">About</string>
+    <string name="menu_bluetooth_beacon_scanner">Bluetooth Beacon Scanner</string>
+    <string name="menu_usb_serial_sensor_recorder">USB Serial Sensor Recorder</string>
+    <string name="scan_settings">Scan Settings</string>
+    <string name="ble_only">BLE Only</string>
 </resources>
