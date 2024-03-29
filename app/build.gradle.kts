@@ -57,6 +57,7 @@ dependencies {
     implementation("com.fasterxml:aalto-xml:1.2.2")
     // https://mvnrepository.com/artifact/com.google.guava/guava
     implementation("com.google.guava:guava:33.1.0-android")
+    implementation("com.google.android.material:material")
 
     implementation(libs.serialport)
     implementation(libs.usbserial)

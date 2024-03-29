@@ -2,6 +2,7 @@ package com.kenvix.sensorcollector.ui
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.bluetooth.BluetoothManager
 import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
@@ -48,7 +49,8 @@ class MainActivity :
     AppCompatActivity(),
     CoroutineScope by CoroutineScope(CoroutineName("MainActivity") + Dispatchers.Main) {
     private var workingDialog: AlertDialog? = null
-    private lateinit var powerManager: PowerManager
+    internal lateinit var powerManager: PowerManager
+    internal lateinit var bluetoothManager : BluetoothManager
     private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var binding: ActivityMainBinding
     internal val serialFinder: SerialPortFinder by lazy { SerialPortFinder() }
@@ -98,6 +100,7 @@ class MainActivity :
         UsbSerial.init(sysContext = applicationContext)
         UsbSerial.registerUsbReceiver(uiContext = this)
         powerManager = applicationContext.getSystemService(POWER_SERVICE) as PowerManager
+        bluetoothManager = applicationContext.getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
 
         val drawerLayout: DrawerLayout = binding.drawerLayout
         val navView: NavigationView = binding.navView
@@ -260,7 +263,7 @@ class MainActivity :
     }
 
     @SuppressLint("BatteryLife")
-    private fun acquirePermissions() {
+    internal fun acquirePermissions() {
         if (!isPermissionsGranted()) {
             var perms = listOf(
                 Manifest.permission.ACCESS_FINE_LOCATION,
