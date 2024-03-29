@@ -17,6 +17,16 @@
     <string name="scan_serial">Scan Serial</string>
     <string name="start_recoding">Start Recoding</string>
     <string name="previous">Previous</string>
+    <string name="scan_bluetooth">Scan Bluetooth</string>
+    <string name="name_filter">Name Filter (Regex supported)</string>
+
+    <string name="menu_home">Home</string>
+    <string name="menu_gallery">Gallery</string>
+    <string name="menu_slideshow">Slideshow</string>
+
+    <string name="nav_header_title">Android Studio</string>
+    <string name="nav_header_subtitle">android.studio@android.com</string>
+    <string name="nav_header_desc">Navigation header</string>
 
     <string name="lorem_ipsum">
         Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam in scelerisque sem. Mauris
@@ -57,4 +67,5 @@
     <string name="output_format">Output Format</string>
     <string name="permissions_not_granted">Permissions not granted, some features may not work. \nPlease grant all permissions and press OK to continue.</string>
     <string name="permissions_required">Permissions required</string>
+    <string name="about">About</string>
 </resources>

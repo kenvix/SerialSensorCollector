@@ -22,11 +22,14 @@ import android_serialport_api.SerialPortFinder
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.drawerlayout.widget.DrawerLayout
 import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
+import androidx.navigation.ui.setupWithNavController
 import com.felhr.usbserial.UsbSerialDevice
+import com.google.android.material.navigation.NavigationView
 import com.google.android.material.snackbar.Snackbar
 import com.kenvix.sensorcollector.R
 import com.kenvix.sensorcollector.databinding.ActivityMainBinding
@@ -96,9 +99,18 @@ class MainActivity :
         UsbSerial.registerUsbReceiver(uiContext = this)
         powerManager = applicationContext.getSystemService(POWER_SERVICE) as PowerManager
 
+        val drawerLayout: DrawerLayout = binding.drawerLayout
+        val navView: NavigationView = binding.navView
+
         val navController = findNavController(R.id.nav_host_fragment_content_main)
-        appBarConfiguration = AppBarConfiguration(navController.graph)
+        appBarConfiguration = AppBarConfiguration(
+            setOf(
+                R.id.nav_home, R.id.nav_gallery, R.id.nav_slideshow
+            ), drawerLayout
+        )
+
         setupActionBarWithNavController(navController, appBarConfiguration)
+        navView.setupWithNavController(navController)
 
         binding.fab.setOnClickListener { view ->
             Snackbar.make(view, "Written by Kenvix <i@kenvix.com>.\nLicensed under GPLv3 license.", Snackbar.LENGTH_LONG)
