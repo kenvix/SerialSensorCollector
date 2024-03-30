@@ -67,14 +67,16 @@
         </LinearLayout>
 
         <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/bth_name_filter"
+                android:id="@+id/bth_name_filter_layout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:hint="@string/name_filter">
 
             <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/bth_name_filter"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:text="ATC|CGD|LYW|Qingping"
                     android:autofillHints="@string/name_filter"
                     android:inputType="textFilter" />
 

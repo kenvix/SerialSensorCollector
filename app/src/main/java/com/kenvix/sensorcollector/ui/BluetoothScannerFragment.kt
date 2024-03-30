@@ -18,6 +18,7 @@ import com.google.android.material.snackbar.Snackbar
 import com.kenvix.sensorcollector.R
 import com.kenvix.sensorcollector.databinding.FragmentBluetoothScanBinding
 import com.kenvix.sensorcollector.utils.getScanFailureMessage
+import java.util.regex.Pattern
 
 /**
  * A simple [Fragment] subclass as the second destination in the navigation.
@@ -32,6 +33,7 @@ class BluetoothScannerFragment : Fragment() {
     private lateinit var activity: MainActivity
     private val loggingVeryVerbose = true
     private var isIncludeNullNameDevices = false
+    private var bthNamePattern: Pattern? = null
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -74,8 +76,14 @@ class BluetoothScannerFragment : Fragment() {
                 super.onScanResult(callbackType, result)
                 // 处理扫描结果
                 if (result.scanRecord != null &&
-                    (isIncludeNullNameDevices || !result.scanRecord!!.deviceName.isNullOrEmpty())) {
-                    handleResult(result)
+                    (isIncludeNullNameDevices || !result.scanRecord!!.deviceName.isNullOrEmpty())
+                ) {
+                    if (bthNamePattern == null || bthNamePattern!!.matcher(
+                            result.scanRecord?.deviceName ?: ""
+                        ).find()
+                    ) {
+                        handleResult(result)
+                    }
                 }
             }
 
@@ -86,6 +94,11 @@ class BluetoothScannerFragment : Fragment() {
                     .asSequence()
                     .filter {
                         it.scanRecord != null && (isIncludeNullNameDevices || !it.scanRecord!!.deviceName.isNullOrEmpty())
+                    }
+                    .filter {
+                        bthNamePattern == null || bthNamePattern!!.matcher(
+                            it.scanRecord?.deviceName ?: ""
+                        ).find()
                     }
                     .forEach { handleResult(it) }
             }
@@ -106,6 +119,13 @@ class BluetoothScannerFragment : Fragment() {
         binding.buttonBluetoothScan.setOnClickListener {
             withUIOperationDisabledN {
                 isIncludeNullNameDevices = binding.showUnnamedDevices.isChecked
+
+                bthNamePattern = if (!binding.bthNameFilter.text.isNullOrBlank()) {
+                    Pattern.compile(binding.bthNameFilter.text?.toString() ?: "(.*)")
+                } else {
+                    null
+                }
+
 
                 if (!isScanning) {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
