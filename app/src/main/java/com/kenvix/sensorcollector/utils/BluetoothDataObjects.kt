@@ -1,11 +1,11 @@
 package com.kenvix.sensorcollector.utils
 
 data class ThermometerData(
-    val temperature: Double = Double.NaN,
-    val humidity: Double = Double.NaN,
-    val pressure: Double = Double.NaN,
+    val temperature: Float = Float.NaN,
+    val humidity: Float = Float.NaN,
+    val pressure: Float = Float.NaN,
     val batteryLevel: Float = Float.NaN,
-    val batteryMV: Double = Double.NaN
+    val batteryMV: Float = Float.NaN
 ) {
     override fun toString(): String {
         return StringBuilder().let {

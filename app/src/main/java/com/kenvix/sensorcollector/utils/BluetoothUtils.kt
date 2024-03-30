@@ -23,31 +23,38 @@ fun ByteArray.toHexString(): String {
 
 fun parserServiceData(uuid: String, data: ByteArray): Any? {
     return when (uuid) {
-//        // PVVX Custom Thermometer Format
-//        "0000181a-0000-1000-8000-00805f9b34fb" -> {
-//            LittleEndianByteArrayInputStream(data).use {
-//                val mSize = it.readUByte()
-//                val mUid = it.readUByte()
-//                val mUuid = it.readUShort()
-//                it.skip(6)
-//                val mTemperature = it.readShort()
-//                val mHumidity = it.readUShort()
-//                val mBatteryMv = it.readUShort()
-//                val mBatteryLevel = it.readUByte()
-//            }
-//        }
-//        "0000fcd2-0000-1000-8000-00805f9b34fb" -> { // todo
-//            val temperature = ((data[1].toInt() and 0xff) shl 8) or (data[0].toInt() and 0xff)
-//            val humidity = ((data[3].toInt() and 0xff) shl 8) or (data[2].toInt() and 0xff)
-//            val pressure = ((data[7].toInt() and 0xff) shl 24) or ((data[6].toInt() and 0xff) shl 16) or ((data[5].toInt() and 0xff) shl 8) or (data[4].toInt() and 0xff)
-//            val battery = ((data[9].toInt() and 0xff) shl 8) or (data[8].toInt() and 0xff)
-//            return ThermometerData(
-//                temperature = temperature / 100.0,
-//                humidity = humidity / 100.0,
-//                pressure = pressure / 100.0,
-//                batteryMV = battery / 100.0
-//            )
-//        }
+        // PVVX Custom Thermometer Format
+        // reference: https://github.com/pvvx/ATC_MiThermometer
+        "0000181a-0000-1000-8000-00805f9b34fb" -> {
+            LittleEndianByteArrayInputStream(data).use {
+                it.skip(6) // mac address. unused
+                val mTemperature = it.readShort()
+                val mHumidity = it.readUShort()
+                val mBatteryMv = it.readUShort()
+                val mBatteryLevel = it.readUByte()
+                val counter = it.readUByte()
+                val flags = it.readUByte()
+                ThermometerData(
+                    temperature = mTemperature / 100.0F,
+                    humidity = mHumidity / 100.0F,
+                    batteryLevel = mBatteryLevel.toFloat(),
+                    batteryMV = mBatteryMv.toFloat()
+                )
+            }
+        }
+        "0000fcd2-0000-1000-8000-00805f9b34fb" -> { // todo
+            return null
+            val temperature = ((data[1].toInt() and 0xff) shl 8) or (data[0].toInt() and 0xff)
+            val humidity = ((data[3].toInt() and 0xff) shl 8) or (data[2].toInt() and 0xff)
+            val pressure = ((data[7].toInt() and 0xff) shl 24) or ((data[6].toInt() and 0xff) shl 16) or ((data[5].toInt() and 0xff) shl 8) or (data[4].toInt() and 0xff)
+            val battery = ((data[9].toInt() and 0xff) shl 8) or (data[8].toInt() and 0xff)
+            return ThermometerData(
+                temperature = temperature / 100.0F,
+                humidity = humidity / 100.0F,
+                pressure = pressure / 100.0F,
+                batteryMV = battery / 100.0F
+            )
+        }
         else -> null
     }
 }

@@ -106,9 +106,9 @@ class BluetoothScannerFragment : Fragment() {
                     it.toString()
                 }
 
-//                if (loggingVeryVerbose) {
-//                    Log.v("BluetoothScanner", "$title\n$content")
-//                }
+                if (loggingVeryVerbose) {
+                    Log.v("BluetoothScanner", "$title\n$content")
+                }
             }
 
             override fun onScanResult(callbackType: Int, result: ScanResult) {
