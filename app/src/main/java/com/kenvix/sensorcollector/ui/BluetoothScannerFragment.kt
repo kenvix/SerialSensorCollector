@@ -14,10 +14,14 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.app.ActivityCompat
+import androidx.core.util.size
 import com.google.android.material.snackbar.Snackbar
 import com.kenvix.sensorcollector.R
 import com.kenvix.sensorcollector.databinding.FragmentBluetoothScanBinding
 import com.kenvix.sensorcollector.utils.getScanFailureMessage
+import com.kenvix.sensorcollector.utils.parserServiceData
+import com.kenvix.sensorcollector.utils.toHexString
+import java.time.LocalTime
 import java.util.regex.Pattern
 
 /**
@@ -70,6 +74,41 @@ class BluetoothScannerFragment : Fragment() {
                                 "${result.scanRecord?.txPowerLevel} ${result.scanRecord?.manufacturerSpecificData} ${result.scanRecord?.serviceData} ${result.scanRecord?.serviceUuids}"
                     )
                 }
+
+                val time = LocalTime.now()
+
+                val title = String.format(
+                    "[%02d:%02d:%02d.%03d %02d] %s",
+                    time.hour, time.minute, time.second, time.nano / 1000000,
+                    result.rssi,
+                    if (result.scanRecord?.deviceName.isNullOrEmpty()) result.device.address else result.scanRecord?.deviceName
+                )
+
+                val content = StringBuilder().let {
+                    result.scanRecord?.serviceData?.forEach { (uuid, bytes) ->
+                        parserServiceData(uuid.toString(), bytes).let { data ->
+                            if (data != null) {
+                                it.append(data.toString()).append("\n")
+                            } else {
+                                it.append(String.format("%s: %s\n", uuid, bytes.toHexString()))
+                            }
+                        }
+                    }
+
+                    it.append("RL ${result.scanRecord?.bytes?.size ?: 0} ")
+                    it.append("SL ${result.scanRecord?.serviceData?.size ?: 0} ")
+                    it.append("ML ${result.scanRecord?.manufacturerSpecificData?.size ?: 0} ")
+
+                    if (result.txPower != Int.MIN_VALUE) {
+                        it.append(" Tx ${result.txPower}")
+                    }
+
+                    it.toString()
+                }
+
+//                if (loggingVeryVerbose) {
+//                    Log.v("BluetoothScanner", "$title\n$content")
+//                }
             }
 
             override fun onScanResult(callbackType: Int, result: ScanResult) {
