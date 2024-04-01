@@ -9,10 +9,10 @@ data class ThermometerData(
 ) {
     override fun toString(): String {
         return StringBuilder().let {
-            if (temperature.isFinite()) it.append(String.format("🌡️ ${temperature}℃ "))
-            if (humidity.isFinite()) it.append("💦 ${humidity}% ")
-            if (pressure.isFinite()) it.append("🌬️ ${pressure}Pa")
-            if (batteryMV.isFinite()) it.append("🔋 ${batteryLevel}% ${batteryMV}mV")
+            if (temperature.isFinite()) it.append(String.format("🌡️ %.2f℃ ", temperature))
+            if (humidity.isFinite()) it.append(String.format("💦 %02.2f%% ", humidity))
+            if (pressure.isFinite()) it.append(String.format("🌬️ ${pressure}Pa"))
+            if (batteryMV.isFinite()) it.append(String.format("🔋 %02.0f%% %02.0fmV", batteryLevel, batteryMV))
             it.toString()
         }
     }

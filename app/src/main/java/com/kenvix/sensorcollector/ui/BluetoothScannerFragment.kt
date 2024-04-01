@@ -13,6 +13,7 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ArrayAdapter
 import androidx.core.app.ActivityCompat
 import androidx.core.util.size
 import com.google.android.material.snackbar.Snackbar
@@ -38,6 +39,7 @@ class BluetoothScannerFragment : Fragment() {
     private val loggingVeryVerbose = true
     private var isIncludeNullNameDevices = false
     private var bthNamePattern: Pattern? = null
+    private val scannedItems = mutableListOf<BluetoothScannerListItem>()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -63,6 +65,10 @@ class BluetoothScannerFragment : Fragment() {
             .setReportDelay(if (binding.quickScan.isChecked) 0 else 500)
             .build()
 
+        binding.bthList.apply {
+            adapter = BluetoothScannerListAdapter(requireContext(), scannedItems)
+        }
+
         var isScanning = false
         val bleScanCallback = object : ScanCallback() {
             @SuppressLint("MissingPermission")
@@ -75,40 +81,17 @@ class BluetoothScannerFragment : Fragment() {
                     )
                 }
 
-                val time = LocalTime.now()
-
-                val title = String.format(
-                    "[%02d:%02d:%02d.%03d %02d] %s",
-                    time.hour, time.minute, time.second, time.nano / 1000000,
-                    result.rssi,
-                    if (result.scanRecord?.deviceName.isNullOrEmpty()) result.device.address else result.scanRecord?.deviceName
-                )
-
-                val content = StringBuilder().let {
-                    result.scanRecord?.serviceData?.forEach { (uuid, bytes) ->
-                        parserServiceData(uuid.toString(), bytes).let { data ->
-                            if (data != null) {
-                                it.append(data.toString()).append("\n")
-                            } else {
-                                it.append(String.format("%s: %s\n", uuid, bytes.toHexString()))
-                            }
-                        }
+                val item = BluetoothScannerListItem(result)
+                scannedItems.indexOf(item).let { index ->
+                    if (index != -1) {
+                        scannedItems[index] = item
+                    } else {
+                        scannedItems.add(item)
                     }
-
-                    it.append("RL ${result.scanRecord?.bytes?.size ?: 0} ")
-                    it.append("SL ${result.scanRecord?.serviceData?.size ?: 0} ")
-                    it.append("ML ${result.scanRecord?.manufacturerSpecificData?.size ?: 0} ")
-
-                    if (result.txPower != Int.MIN_VALUE) {
-                        it.append(" Tx ${result.txPower}")
-                    }
-
-                    it.toString()
                 }
 
-                if (loggingVeryVerbose) {
-                    Log.v("BluetoothScanner", "$title\n$content")
-                }
+                if (loggingVeryVerbose)
+                    Log.v("BluetoothScanner", "${item.title}\n${item.body}")
             }
 
             override fun onScanResult(callbackType: Int, result: ScanResult) {
@@ -122,6 +105,9 @@ class BluetoothScannerFragment : Fragment() {
                         ).find()
                     ) {
                         handleResult(result)
+
+                        scannedItems.sortDescending()
+                        activity.runOnUiThread { updateBthListUI() }
                     }
                 }
             }
@@ -140,6 +126,9 @@ class BluetoothScannerFragment : Fragment() {
                         ).find()
                     }
                     .forEach { handleResult(it) }
+
+                scannedItems.sortDescending()
+                activity.runOnUiThread { updateBthListUI() }
             }
 
             override fun onScanFailed(errorCode: Int) {
@@ -206,4 +195,7 @@ class BluetoothScannerFragment : Fragment() {
         _binding = null
     }
 
+    private fun updateBthListUI() {
+        (binding.bthList.adapter as ArrayAdapter<*>).notifyDataSetChanged()
+    }
 }
