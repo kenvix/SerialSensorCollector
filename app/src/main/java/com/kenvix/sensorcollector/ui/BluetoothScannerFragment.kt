@@ -40,6 +40,7 @@ class BluetoothScannerFragment : Fragment() {
     private lateinit var activity: MainActivity
     private val loggingVeryVerbose = true
     private var isIncludeNullNameDevices = false
+    private var isIncludeUnknownDevices = false
     private var bthNamePattern: Pattern? = null
     private val scannedItems = mutableListOf<BluetoothScannerListItem>()
     private var blePhy: Int = 0
@@ -71,6 +72,7 @@ class BluetoothScannerFragment : Fragment() {
         binding.bthList.apply {
             adapter = BluetoothScannerListAdapter(requireContext(), scannedItems)
         }
+
 
         // Create an ArrayAdapter using the string array and a default spinner layout.
         ArrayAdapter.createFromResource(
@@ -188,13 +190,13 @@ class BluetoothScannerFragment : Fragment() {
         binding.buttonBluetoothScan.setOnClickListener {
             withUIOperationDisabledN {
                 isIncludeNullNameDevices = binding.showUnnamedDevices.isChecked
+                isIncludeUnknownDevices = binding.showUnknown.isChecked
 
                 bthNamePattern = if (!binding.bthNameFilter.text.isNullOrBlank()) {
                     Pattern.compile(binding.bthNameFilter.text?.toString() ?: "(.*)")
                 } else {
                     null
                 }
-
 
                 if (!isScanning) {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&

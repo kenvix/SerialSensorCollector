@@ -83,6 +83,7 @@
     <string name="phy_coded_s2">LE Coded S2</string>
     <string name="phy_coded_s8">LE Coded S8</string>
     <string name="clear">❌ Clear</string>
+    <string name="show_unknown">Show Unknown</string>
 
     <string-array name="ble_phy">
 <!--        <item>All PHY</item>-->
