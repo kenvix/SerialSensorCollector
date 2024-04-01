@@ -71,8 +71,26 @@
     <string name="about">About</string>
     <string name="menu_bluetooth_beacon_scanner">Bluetooth Beacon Scanner</string>
     <string name="menu_usb_serial_sensor_recorder">USB Serial Sensor Recorder</string>
-    <string name="scan_settings">Settings</string>
+    <string name="scan_settings">Scan Settings</string>
     <string name="ble_only">BLE Only</string>
-    <string name="quick_scan">Quick Scan</string>
+    <string name="quick_scan">Fast Scan</string>
     <string name="show_unnamed">Show Unnamed</string>
+
+    <string name="phy_default">Default PHY</string>
+    <string name="phy_1m">LE 1M</string>
+    <string name="phy_2m">LE 2M</string>
+    <string name="le_phy">LE PHY</string>
+    <string name="phy_coded_s2">LE Coded S2</string>
+    <string name="phy_coded_s8">LE Coded S8</string>
+    <string name="clear">❌ Clear</string>
+
+    <string-array name="ble_phy">
+<!--        <item>All PHY</item>-->
+<!--        <item>LE 1M</item>-->
+<!--        <item>LE 2M</item>-->
+<!--        <item>LE Coded S2/S8</item>-->
+        <item>All PHY</item>
+        <item>LE 1M</item>
+        <item>LE Coded</item>
+    </string-array>
 </resources>

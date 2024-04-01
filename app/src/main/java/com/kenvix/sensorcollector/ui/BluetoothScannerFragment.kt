@@ -2,6 +2,7 @@ package com.kenvix.sensorcollector.ui
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.bluetooth.BluetoothDevice
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
@@ -13,6 +14,7 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import androidx.core.app.ActivityCompat
 import androidx.core.util.size
@@ -40,6 +42,7 @@ class BluetoothScannerFragment : Fragment() {
     private var isIncludeNullNameDevices = false
     private var bthNamePattern: Pattern? = null
     private val scannedItems = mutableListOf<BluetoothScannerListItem>()
+    private var blePhy: Int = 0
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -58,15 +61,53 @@ class BluetoothScannerFragment : Fragment() {
         val bleScanner = (requireActivity() as MainActivity)
             .bluetoothManager.adapter.bluetoothLeScanner
         val bleSettings = ScanSettings.Builder()
+            .setLegacy(false)
             .setScanMode(
                 if (binding.quickScan.isChecked)
                     ScanSettings.SCAN_MODE_LOW_LATENCY else ScanSettings.SCAN_MODE_BALANCED
             ) // 高频率扫描
             .setReportDelay(if (binding.quickScan.isChecked) 0 else 500)
-            .build()
 
         binding.bthList.apply {
             adapter = BluetoothScannerListAdapter(requireContext(), scannedItems)
+        }
+
+        // Create an ArrayAdapter using the string array and a default spinner layout.
+        ArrayAdapter.createFromResource(
+            requireContext(),
+            R.array.ble_phy,
+            android.R.layout.simple_spinner_item
+        ).also { adapter ->
+            // Specify the layout to use when the list of choices appears.
+            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+            // Apply the adapter to the spinner.
+            binding.blePhy.adapter = adapter
+            binding.blePhy.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(
+                    parent: AdapterView<*>?,
+                    view: View?,
+                    position: Int,
+                    id: Long
+                ) {
+                    blePhy = when (position) {
+                        0 -> ScanSettings.PHY_LE_ALL_SUPPORTED
+                        1 -> BluetoothDevice.PHY_LE_1M
+                        2 -> BluetoothDevice.PHY_LE_CODED
+                        else -> throw IllegalArgumentException("Invalid position")
+                    }
+
+                    bleSettings.setPhy(blePhy)
+                }
+
+                override fun onNothingSelected(parent: AdapterView<*>?) {
+                    blePhy = 0
+                }
+            }
+        }
+
+        binding.clear.setOnClickListener {
+            scannedItems.clear()
+            updateBthListUI()
         }
 
         var isScanning = false
@@ -166,7 +207,8 @@ class BluetoothScannerFragment : Fragment() {
                         return@withUIOperationDisabledN
                     }
 
-                    bleScanner.startScan(null, bleSettings, bleScanCallback)
+                    val settings = bleSettings.build()
+                    bleScanner.startScan(null, settings, bleScanCallback)
                     binding.buttonBluetoothScan.text = getString(R.string.scan_bluetooth_stop)
                     isScanning = true
                 } else {
