@@ -6,10 +6,9 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
-import android.widget.TextView
 import androidx.core.util.size
-import com.kenvix.sensorcollector.R
 import com.kenvix.sensorcollector.databinding.RecordingBthListEntryBinding // 更新此行以匹配你的包名和布局文件名
+import com.kenvix.sensorcollector.databinding.TitleBodyCheckboxListEntryBinding
 import com.kenvix.sensorcollector.utils.parserServiceData
 import com.kenvix.sensorcollector.utils.toHexString
 import java.time.LocalTime
@@ -79,6 +78,35 @@ class BluetoothScannerListAdapter(
         val item = items[position]
         binding.itemTitle.text = item.title
         binding.itemBody.text = item.body
+
+        return binding.root
+    }
+}
+
+data class TitleBodyCheckboxListItem(val title: String, val body: String, var isChecked: Boolean = false)
+
+class TitleBodyCheckboxListAdapter(
+    context: Context,
+    private val items: List<TitleBodyCheckboxListItem>
+) :
+    ArrayAdapter<TitleBodyCheckboxListItem>(context, 0, items) {
+
+    override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+        val binding = if (convertView == null) {
+            TitleBodyCheckboxListEntryBinding.inflate(LayoutInflater.from(context), parent, false)
+        } else {
+            TitleBodyCheckboxListEntryBinding.bind(convertView)
+        }
+
+        val item = items[position]
+        binding.itemTitle.text = item.title
+
+        binding.itemBody.text = item.body
+        binding.checkBox.isChecked = item.isChecked
+
+        binding.checkBox.setOnCheckedChangeListener { _, isChecked ->
+            item.isChecked = isChecked
+        }
 
         return binding.root
     }

@@ -166,14 +166,22 @@ object UsbSerial : AutoCloseable,
         return usbSerialDevices
     }
 
+    @SuppressLint("MutableImplicitPendingIntent")
     suspend fun requestPermission(uiContext: Context, device: UsbDevice): Boolean {
         return opMutex.withLock {
             suspendCancellableCoroutine { continuation ->
                 val permissionIntent =
-                    PendingIntent.getBroadcast(
-                        uiContext, 0, Intent(ACTION_USB_PERMISSION),
-                        PendingIntent.FLAG_IMMUTABLE
-                    )
+                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                        PendingIntent.getBroadcast(
+                            uiContext, 0, Intent(ACTION_USB_PERMISSION),
+                            PendingIntent.FLAG_MUTABLE
+                        )
+                    } else {
+                        PendingIntent.getBroadcast(
+                            uiContext, 0, Intent(ACTION_USB_PERMISSION),
+                            PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_ALLOW_UNSAFE_IMPLICIT_INTENT
+                        )
+                    }
                 permissionContinuation = continuation
                 usbManager.requestPermission(device, permissionIntent)
             }

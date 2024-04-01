@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- res/layout/item_custom_list_with_checkbox.xml -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:id="@+id/item_layout"
+        android:paddingStart="15dp"
+        android:padding="10dp">
+
+    <LinearLayout
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginEnd="8dp">
+        <TextView
+                android:id="@+id/item_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Item Title"
+                android:textSize="16sp"
+                android:textColor="@color/half_black"
+                android:textStyle="bold"/>
+
+        <TextView
+                android:id="@+id/item_body"
+                android:text="Item Content"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="13sp"/>
+    </LinearLayout>
+
+    <CheckBox
+            android:id="@+id/checkBox"
+            android:focusable="false"
+            android:focusableInTouchMode="false"
+            android:clickable="false"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+</LinearLayout>

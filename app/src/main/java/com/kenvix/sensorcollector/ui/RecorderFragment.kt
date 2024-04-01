@@ -1,11 +1,8 @@
 package com.kenvix.sensorcollector.ui
 
-import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.hardware.usb.UsbDevice
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -23,7 +20,6 @@ import com.kenvix.sensorcollector.databinding.FragmentRecordingBinding
 import com.kenvix.sensorcollector.exceptions.BusinessException
 import com.kenvix.sensorcollector.services.UsbSerial
 import com.kenvix.sensorcollector.services.UsbSerialRecorderService
-import com.kenvix.sensorcollector.utils.ExcelRecordWriter
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -80,12 +76,7 @@ class RecorderFragment : Fragment() {
 
         binding.serialList.apply {
             setChoiceMode(AbsListView.CHOICE_MODE_MULTIPLE)
-            setAdapter(
-                ArrayAdapter(
-                    this.context,
-                    R.layout.recording_serial_list_entry, scannedSerialStringItems
-                )
-            )
+            setAdapter(ArrayAdapter(this.context, R.layout.recording_serial_list_entry, scannedSerialStringItems))
 
             setOnItemClickListener { parent, view, position, id ->
                 val checked = binding.serialList.isItemChecked(position)
@@ -98,8 +89,15 @@ class RecorderFragment : Fragment() {
                             withUIOperationDisabledA {
                                 try {
                                     granted = UsbSerial.requestPermission(requireContext(), device)
-                                    if (granted)
-                                        UsbSerial.selectedDevices.add(device)
+                                    if (granted) {
+                                        if (device.serialNumber != null)
+                                            scannedSerialStringItems[position] = "${device.vendorId}-${device.productId}-${device.serialNumber} \n" +
+                                            "${device.productName} ${device.version} ${device.deviceName} ${device.deviceId}"
+                                        else
+                                            scannedSerialStringItems[position] = "${device.deviceName}\n" +
+                                                "${device.version} ${device.vendorId}-${device.productId} ${device.deviceId}"
+                                        updateSerialListUI()
+                                    }
 
                                     binding.serialList.setItemChecked(position, granted)
                                 } catch (e: Exception) {
@@ -115,10 +113,10 @@ class RecorderFragment : Fragment() {
                             }
                         }
                     } else {
-                        UsbSerial.selectedDevices.add(device)
+                        binding.serialList.setItemChecked(position, true)
                     }
                 } else {
-                    UsbSerial.selectedDevices.remove(device)
+                    binding.serialList.setItemChecked(position, false)
                 }
             }
         }
@@ -134,10 +132,20 @@ class RecorderFragment : Fragment() {
 
                     scannedSerialDevices.clear()
                     scannedSerialStringItems.clear()
-                    UsbSerial.selectedDevices.clear()
+
                     devices.forEach {
                         scannedSerialDevices.add(it)
-                        scannedSerialStringItems.add("${it.productName} ${it.version}\n${it.deviceName}")
+                        if (UsbSerial.hasPermission(it)) {
+                            if (it.serialNumber != null)
+                                scannedSerialStringItems.add("${it.vendorId}-${it.productId}-${it.serialNumber} \n" +
+                                    "${it.version} ${it.deviceName} ${it.deviceId}")
+                            else
+                                scannedSerialStringItems.add("${it.deviceName}\n" +
+                                        "${it.version} ${it.vendorId}-${it.productId} ${it.deviceId}")
+                        } else {
+                            scannedSerialStringItems.add("${it.deviceName}\n"+
+                                "⚠️ NoPerm ${it.version} ${it.vendorId}-${it.productId} ${it.deviceId}")
+                        }
                     }
 
                     updateSerialListUI()
@@ -158,8 +166,14 @@ class RecorderFragment : Fragment() {
             try {
                 activity.launch(Dispatchers.Main) {
                     withUIOperationDisabledA {
-
                         try {
+                            UsbSerial.selectedDevices.clear()
+                            for (i in 0 until binding.serialList.count) {
+                                if (binding.serialList.isItemChecked(i)) {
+                                    UsbSerial.selectedDevices.add(scannedSerialDevices[i])
+                                }
+                            }
+
                             val outputFormat =
                                 when (binding.outputFormatGroup.checkedRadioButtonId) {
                                     R.id.output_format_csv -> "csv"
