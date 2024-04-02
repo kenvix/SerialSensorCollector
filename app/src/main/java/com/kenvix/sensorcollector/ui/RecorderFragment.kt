@@ -86,7 +86,7 @@ class RecorderFragment : Fragment() {
                     if (!granted) {
                         // request permission of this usb device
                         activity.launch {
-                            withUIOperationDisabledA {
+                            withUIOperationDisabled {
                                 try {
                                     granted = UsbSerial.requestPermission(requireContext(), device)
                                     if (granted) {
@@ -126,7 +126,7 @@ class RecorderFragment : Fragment() {
 
         binding.buttonScanSerial.setOnClickListener {
             try {
-                withUIOperationDisabledN {
+                withUIOperationDisabled {
                     val devices = UsbSerial.getAvailableUsbSerialDevices()
                     Log.d(this::class.simpleName, "Available devices: $devices")
 
@@ -165,7 +165,7 @@ class RecorderFragment : Fragment() {
         binding.buttonStartRecoding.setOnClickListener {
             try {
                 activity.launch(Dispatchers.Main) {
-                    withUIOperationDisabledA {
+                    withUIOperationDisabled {
                         try {
                             UsbSerial.selectedDevices.clear()
                             for (i in 0 until binding.serialList.count) {
@@ -235,20 +235,7 @@ class RecorderFragment : Fragment() {
         (binding.serialList.adapter as ArrayAdapter<*>).notifyDataSetChanged()
     }
 
-    private suspend fun withUIOperationDisabledA(op: suspend () -> Unit) {
-        try {
-            binding.buttonStartRecoding.isEnabled = false
-            binding.buttonScanSerial.isEnabled = false
-            binding.serialList.isEnabled = false
-            op()
-        } finally {
-            binding.buttonStartRecoding.isEnabled = true
-            binding.buttonScanSerial.isEnabled = true
-            binding.serialList.isEnabled = true
-        }
-    }
-
-    private fun withUIOperationDisabledN(op: () -> Unit) {
+    private inline fun withUIOperationDisabled(op: () -> Unit) {
         try {
             binding.buttonStartRecoding.isEnabled = false
             binding.buttonScanSerial.isEnabled = false

@@ -38,6 +38,7 @@ android {
     }
 }
 
+//noinspection UseTomlInstead
 dependencies {
 
     implementation(libs.androidx.core.ktx)
@@ -62,4 +63,10 @@ dependencies {
     implementation(libs.serialport)
     implementation(libs.usbserial)
     implementation(libs.poi.ooxml)
+
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
+
+    // https://mvnrepository.com/artifact/org.jetbrains.kotlinx/kotlinx-serialization-json
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+
 }

@@ -17,14 +17,10 @@ import android.view.ViewGroup
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import androidx.core.app.ActivityCompat
-import androidx.core.util.size
 import com.google.android.material.snackbar.Snackbar
 import com.kenvix.sensorcollector.R
 import com.kenvix.sensorcollector.databinding.FragmentBluetoothScanBinding
 import com.kenvix.sensorcollector.utils.getScanFailureMessage
-import com.kenvix.sensorcollector.utils.parserServiceData
-import com.kenvix.sensorcollector.utils.toHexString
-import java.time.LocalTime
 import java.util.regex.Pattern
 
 /**
@@ -188,7 +184,7 @@ class BluetoothScannerFragment : Fragment() {
         }
 
         binding.buttonBluetoothScan.setOnClickListener {
-            withUIOperationDisabledN {
+            withUIOperationDisabled {
                 isIncludeNullNameDevices = binding.showUnnamedDevices.isChecked
                 isIncludeUnknownDevices = binding.showUnknown.isChecked
 
@@ -206,7 +202,7 @@ class BluetoothScannerFragment : Fragment() {
                         ) != PackageManager.PERMISSION_GRANTED
                     ) {
                         activity.acquirePermissions()
-                        return@withUIOperationDisabledN
+                        return@withUIOperationDisabled
                     }
 
                     val settings = bleSettings.build()
@@ -222,16 +218,13 @@ class BluetoothScannerFragment : Fragment() {
         }
     }
 
-    private fun withUIOperationDisabledN(op: () -> Unit) {
-        binding.buttonBluetoothScan.isEnabled = false
-        op()
-        binding.buttonBluetoothScan.isEnabled = true
-    }
-
-    private suspend fun withUIOperationDisabledA(op: suspend () -> Unit) {
-        binding.buttonBluetoothScan.isEnabled = false
-        op()
-        binding.buttonBluetoothScan.isEnabled = true
+    private inline fun withUIOperationDisabled(op: () -> Unit) {
+        try {
+            binding.buttonBluetoothScan.isEnabled = false
+            op()
+        } finally {
+            binding.buttonBluetoothScan.isEnabled = true
+        }
     }
 
     override fun onDestroyView() {
