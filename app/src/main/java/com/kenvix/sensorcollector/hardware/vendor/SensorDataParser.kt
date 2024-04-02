@@ -13,11 +13,11 @@ import java.io.Serializable
 
 interface SensorDataParser: Serializable {
     fun prepareSerialDevice(device: UsbDevice, serial: UsbSerialDevice)
-    fun onDataInput(
+    suspend fun onDataInput(
         device: UsbDevice,
         serial: UsbSerialDevice,
         data: DataInputStream,
-        onReceived: (UsbDevice, UsbSerialDevice, SensorData) -> Unit
+        onReceived: suspend (UsbDevice, UsbSerialDevice, SensorData) -> Unit
     )
 
     val packetHeader: Byte

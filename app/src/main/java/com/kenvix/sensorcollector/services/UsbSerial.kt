@@ -96,7 +96,7 @@ object UsbSerial : AutoCloseable,
         device: UsbDevice,
         dataParser: SensorDataParser,
         delimiter: Byte,
-        onReceived: (UsbDevice, UsbSerialDevice, SensorData) -> Unit
+        onReceived: suspend (UsbDevice, UsbSerialDevice, SensorData) -> Unit
     ): Job {
         val usbConnection: UsbDeviceConnection = usbManager.openDevice(device)
         var job: Job
@@ -132,7 +132,7 @@ object UsbSerial : AutoCloseable,
         dataParser: SensorDataParser,
         writer: RecordWriter,
         delimiter: Byte,
-        onReceived: (UsbDevice, UsbSerialDevice, SensorData) -> Unit
+        onReceived: suspend (UsbDevice, UsbSerialDevice, SensorData) -> Unit
     ) {
         val jobs = opMutex.withLock {
             selectedDevices.map {

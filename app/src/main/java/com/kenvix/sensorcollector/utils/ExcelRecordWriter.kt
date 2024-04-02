@@ -14,21 +14,28 @@ import com.felhr.usbserial.UsbSerialDevice
 import com.kenvix.sensorcollector.hardware.vendor.SensorData
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import org.apache.poi.ss.usermodel.FillPatternType
 import org.apache.poi.ss.usermodel.IndexedColors
 import org.apache.poi.ss.usermodel.Sheet
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import java.io.BufferedOutputStream
 import java.io.Closeable
+import java.io.DataInputStream
 import java.io.PrintStream
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.atomic.AtomicInteger
 
 interface RecordWriter : Closeable {
     fun setDeviceList(usbDevice: Collection<UsbDevice>)
-    fun onSensorDataReceived(
+    suspend fun onSensorDataReceived(
         usbDevice: UsbDevice,
         usbSerialDevice: UsbSerialDevice,
         sensorData: SensorData
@@ -54,6 +61,8 @@ class CsvRecordWriter(val context: Context, val filePath: Uri) :
     private data class SheetPos(val uri: Uri, val stream: PrintStream, var pos: Int)
     override var rowsWritten: Long = 0
         private set
+    private val writeQueue = Channel<Any>(65535)
+    private lateinit var writeJob: Job
 
     override fun setDeviceList(usbDevice: Collection<UsbDevice>) {
         // Make directory
@@ -72,9 +81,18 @@ class CsvRecordWriter(val context: Context, val filePath: Uri) :
             deviceToStream[it] = SheetPos(file.uri, s, 0)
             s.println("No,AccX,AccY,AccZ,GyroX,GyroY,GyroZ,AngleX,AngleY,AngleZ,TimeStamp,LocalTime")
         }
+
+        writeJob = launch(Dispatchers.IO) {
+            // Intended: To avoid yield new objects to avoid GC Pause
+            while (isActive) {
+                val stream = writeQueue.receive() as PrintStream
+                val s = writeQueue.receive() as String
+                stream.println(s)
+            }
+        }
     }
 
-    override fun onSensorDataReceived(
+    override suspend fun onSensorDataReceived(
         usbDevice: UsbDevice,
         usbSerialDevice: UsbSerialDevice,
         sensorData: SensorData
@@ -87,7 +105,10 @@ class CsvRecordWriter(val context: Context, val filePath: Uri) :
                 "${sensorData.gyroX},${sensorData.gyroY},${sensorData.gyroZ}," +
                 "${sensorData.angleX},${sensorData.angleY},${sensorData.angleZ}," +
                 "${Instant.now().toEpochMilli()},\"${ZonedDateTime.now().format(formatter)}\""
-        pos.stream.println(s)
+        // pos.stream.println(s)
+        // Intended: To avoid yield new objects to avoid GC Pause
+        writeQueue.send(pos.stream)
+        writeQueue.send(s)
         rowsWritten++
     }
 
@@ -98,6 +119,7 @@ class CsvRecordWriter(val context: Context, val filePath: Uri) :
     }
 
     override fun close() {
+        writeQueue.close()
         save()
         deviceToStream.forEach { (device, pair) ->
             pair.stream.close()
@@ -159,7 +181,7 @@ class ExcelRecordWriter(val context: Context, val filePath: Uri) :
         }
     }
 
-    override fun onSensorDataReceived(
+    override suspend fun onSensorDataReceived(
         usbDevice: UsbDevice,
         usbSerialDevice: UsbSerialDevice,
         sensorData: SensorData

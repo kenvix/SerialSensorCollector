@@ -20,11 +20,11 @@ class WitHardwareDataParser : SensorDataParser {
         serial.setBaudRate(115200)
     }
 
-    override fun onDataInput(
+    override suspend fun onDataInput(
         device: UsbDevice,
         serial: UsbSerialDevice,
         data: DataInputStream,
-        onReceived: (UsbDevice, UsbSerialDevice, SensorData) -> Unit
+        onReceived: suspend (UsbDevice, UsbSerialDevice, SensorData) -> Unit
     ) {
         val flag = data.readByte()
         val dataLE = LittleEndianDataInputStream(data)
