@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">传感器信息收集工具</string>
+    <string name="text_list_of_sensors">已扫描到的传感器列表</string>
+    <string name="action_settings">设置</string>
+    <string name="action_test_device">检查设备是否支持</string>
+    <string name="show_available_drivers">显示可用驱动</string>
+    <!-- 用于导航的片段的字符串 -->
+    <string name="first_fragment_label">USB 串口传感器记录器</string>
+    <string name="second_fragment_label">第二片段</string>
+    <string name="record_service_channel_name">USB 串口传感器记录服务</string>
+    <string name="record_service_channel_info">正在记录到 %1$s。点击返回应用</string>
+    <string name="record_service_channel_stopping">停止记录并保存记录到 %1$s</string>
+    <string name="record_activity_info_detailed">
+        正在记录中，点击下面的按钮停止记录。 \n路径：%1$s \n包括的设备：\n%2$s
+    </string>
+    <string name="next">下一步</string>
+    <string name="scan_serial">🔍 扫描 USB 串口设备</string>
+    <string name="start_recoding">▶️ 开始记录数据</string>
+    <string name="previous">上一步</string>
+    <string name="scan_bluetooth">▶️ 开始扫描蓝牙</string>
+    <string name="scan_bluetooth_stop">⏹️ 停止扫描蓝牙</string>
+    <string name="name_filter">设备名称过滤（支持正则表达式）</string>
+
+    <string name="menu_home">首页</string>
+    <string name="menu_gallery">图库</string>
+    <string name="menu_slideshow">幻灯片</string>
+
+    <string name="nav_header_title">Android Studio</string>
+    <string name="nav_header_subtitle">android.studio@android.com</string>
+    <string name="nav_header_desc">导航头部</string>
+
+    <string name="lorem_ipsum">Lorem ipsum</string>
+    <string name="output_format">输出格式</string>
+    <string name="permissions_not_granted">未授予权限，某些功能可能无法工作。\n请授予所有权限并点击“确认”继续。</string>
+    <string name="permissions_required">需要权限</string>
+    <string name="about">关于</string>
+    <string name="menu_bluetooth_beacon_scanner">蓝牙信标扫描器</string>
+    <string name="menu_usb_serial_sensor_recorder">USB 串口传感器记录器</string>
+    <string name="scan_settings">扫描设置</string>
+    <string name="ble_only">仅低功耗蓝牙</string>
+    <string name="quick_scan">快速扫描</string>
+    <string name="show_unnamed">显示无名设备</string>
+
+    <string name="phy_default">默认PHY</string>
+    <string name="phy_1m">LE 1M</string>
+    <string name="phy_2m">LE 2M</string>
+    <string name="le_phy">LE PHY</string>
+    <string name="phy_coded_s2">LE 编码 S2</string>
+    <string name="phy_coded_s8">LE 编码 S8</string>
+    <string name="clear_list">❌ 清除列表</string>
+    <string name="show_unknown">显示未知设备</string>
+
+    <string-array name="ble_phy">
+        <item>所有PHY</item>
+        <item>LE 1M</item>
+        <item>LE Coded</item>
+    </string-array>
+</resources>
