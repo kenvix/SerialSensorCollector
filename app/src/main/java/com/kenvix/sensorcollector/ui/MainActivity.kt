@@ -19,6 +19,7 @@ import android.provider.Settings
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
+import android.widget.TextView
 import android_serialport_api.SerialPortFinder
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -42,6 +43,9 @@ import com.kenvix.sensorcollector.utils.toArray
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 
@@ -49,6 +53,7 @@ class MainActivity :
     AppCompatActivity(),
     CoroutineScope by CoroutineScope(CoroutineName("MainActivity") + Dispatchers.Main) {
     private var workingDialog: AlertDialog? = null
+    private var workingDialogUpdateJob: Job? = null
     internal lateinit var powerManager: PowerManager
     internal lateinit var bluetoothManager : BluetoothManager
     private lateinit var appBarConfiguration: AppBarConfiguration
@@ -151,11 +156,12 @@ class MainActivity :
                 .setTitle("Recording")
                 .setCancelable(false)
                 .setMessage(getString(R.string.record_activity_info_detailed,
-                    service?.uri.toString(),
+                    "---",
                     UsbSerial.selectedDevices.joinToString("\n") { it.deviceName }))
                 .setNegativeButton("Stop") { dialog, _ ->
                     launch(Dispatchers.Main) {
                         service?.tryStopService()
+                        workingDialogUpdateJob?.cancel()
                         workingDialog?.dismiss()
                         workingDialog = AlertDialog.Builder(this@MainActivity)
                             .setTitle("Stopping")
@@ -171,6 +177,19 @@ class MainActivity :
                         }
                     }
                 }.show()
+            workingDialogUpdateJob = launch(Dispatchers.Main) {
+                delay(1000)
+                var textView: TextView? = null
+                while (isActive && workingDialog?.isShowing == true) {
+                    if (textView == null)
+                        textView = workingDialog?.findViewById<TextView>(android.R.id.message)
+
+                    textView!!.text = getString(R.string.record_activity_info_detailed,
+                        service?.rowsWritten?.toString() ?: "---",
+                        UsbSerial.selectedDevices.joinToString("\n") { it.deviceName })
+                    delay(1000)
+                }
+            }
         }
     }
 

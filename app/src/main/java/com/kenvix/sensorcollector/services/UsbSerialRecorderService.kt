@@ -56,6 +56,8 @@ class UsbSerialRecorderService :
     // Binder given to clients
     private val binder = LocalBinder()
     private var workerJob: Job? = null
+    val rowsWritten: Long
+        get() = recordWriter?.rowsWritten ?: 0
 
     @Volatile
     var isRecording: Boolean = false

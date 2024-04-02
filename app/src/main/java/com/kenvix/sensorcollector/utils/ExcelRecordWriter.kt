@@ -35,6 +35,7 @@ interface RecordWriter : Closeable {
     )
 
     fun save()
+    val rowsWritten: Long
 }
 
 class CsvRecordWriter(val context: Context, val filePath: Uri) :
@@ -51,6 +52,8 @@ class CsvRecordWriter(val context: Context, val filePath: Uri) :
         java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd_HH_mm_ss")
 
     private data class SheetPos(val uri: Uri, val stream: PrintStream, var pos: Int)
+    override var rowsWritten: Long = 0
+        private set
 
     override fun setDeviceList(usbDevice: Collection<UsbDevice>) {
         // Make directory
@@ -80,12 +83,12 @@ class CsvRecordWriter(val context: Context, val filePath: Uri) :
         val pos = deviceToStream[usbDevice]
             ?: throw IllegalArgumentException("Device not found in PrintStreams")
         pos.pos++
-        pos.stream.println(
-            "${pos.pos},${sensorData.accX},${sensorData.accY},${sensorData.accZ}," +
-                    "${sensorData.gyroX},${sensorData.gyroY},${sensorData.gyroZ}," +
-                    "${sensorData.angleX},${sensorData.angleY},${sensorData.angleZ}," +
-                    "${Instant.now().toEpochMilli()},\"${ZonedDateTime.now().format(formatter)}\""
-        )
+        val s = "${pos.pos},${sensorData.accX},${sensorData.accY},${sensorData.accZ}," +
+                "${sensorData.gyroX},${sensorData.gyroY},${sensorData.gyroZ}," +
+                "${sensorData.angleX},${sensorData.angleY},${sensorData.angleZ}," +
+                "${Instant.now().toEpochMilli()},\"${ZonedDateTime.now().format(formatter)}\""
+        pos.stream.println(s)
+        rowsWritten++
     }
 
     override fun save() {
@@ -116,6 +119,9 @@ class ExcelRecordWriter(val context: Context, val filePath: Uri) :
             bold = true
         })
     }
+
+    override var rowsWritten: Long = 0
+        private set
 
     private val formatter =
         java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSS")
@@ -179,6 +185,7 @@ class ExcelRecordWriter(val context: Context, val filePath: Uri) :
                 ZonedDateTime.ofInstant(currentTime, zone).format(formatter)
             )
         }
+        rowsWritten++
     }
 
     override fun save() {

@@ -12,7 +12,7 @@
     <string name="record_service_channel_info">Recording to %1$s. Click to back to app</string>
     <string name="record_service_channel_stopping">Stopping recording and saving recordings to %1$s</string>
     <string name="record_activity_info_detailed">
-        Recording is in progress, click button below to stop recording. \nPath: %1$s \nIncluded devices: \n%2$s
+        Recording is in progress, click button below to stop recording. \nData written: %1$s rows \nIncluded devices: \n%2$s
     </string>
     <string name="next">Next</string>
     <string name="scan_serial">🔍 Scan Serial</string>
@@ -50,6 +50,9 @@
     <string name="phy_coded_s8">LE Coded S8</string>
     <string name="clear_list">❌ Clear</string>
     <string name="show_unknown">Show Unknown</string>
+    <string name="unknown_output_format">Unknown output format</string>
+    <string name="you_must_choose_the_save_path">You must choose the save path</string>
+    <string name="usb_permission_request_failed">USB Permission Request Failed</string>
 
     <string-array name="ble_phy">
 <!--        <item>All PHY</item>-->

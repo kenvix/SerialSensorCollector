@@ -103,7 +103,7 @@ class RecorderFragment : Fragment() {
                                 } catch (e: Exception) {
                                     Log.w(this::class.simpleName, "USB Permission Request Failed", e)
                                     AlertDialog.Builder(requireContext())
-                                        .setTitle("USB Permission Request Failed")
+                                        .setTitle(context.getString(R.string.usb_permission_request_failed))
                                         .setMessage(e.toString())
                                         .setPositiveButton("OK") { dialog, _ ->
                                             dialog.dismiss()
@@ -178,11 +178,11 @@ class RecorderFragment : Fragment() {
                                 when (binding.outputFormatGroup.checkedRadioButtonId) {
                                     R.id.output_format_csv -> "csv"
                                     R.id.output_format_xlsx -> "xlsx"
-                                    else -> throw BusinessException("Unknown output format")
+                                    else -> throw BusinessException(getString(R.string.unknown_output_format))
                                 }
 
                             val uri = safCreateFile(outputFormat)
-                                ?: throw BusinessException("You must choose the save path")
+                                ?: throw BusinessException(getString(R.string.you_must_choose_the_save_path))
 
                             val intent = Intent(context, UsbSerialRecorderService::class.java)
                             intent.putExtra("uri", uri)

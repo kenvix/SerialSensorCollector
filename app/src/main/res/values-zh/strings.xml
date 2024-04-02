@@ -12,7 +12,7 @@
     <string name="record_service_channel_info">正在记录到 %1$s。点击返回应用</string>
     <string name="record_service_channel_stopping">停止记录并保存记录到 %1$s</string>
     <string name="record_activity_info_detailed">
-        正在记录中，点击下面的按钮停止记录。 \n路径：%1$s \n包括的设备：\n%2$s
+        正在记录中，点击下面的按钮停止记录。 \n已写入数据大小：%1$s 行 \n包括的设备：\n%2$s
     </string>
     <string name="next">下一步</string>
     <string name="scan_serial">🔍 扫描 USB 串口设备</string>
@@ -50,6 +50,9 @@
     <string name="phy_coded_s8">LE 编码 S8</string>
     <string name="clear_list">❌ 清除列表</string>
     <string name="show_unknown">显示未知设备</string>
+    <string name="unknown_output_format">未知的输出格式</string>
+    <string name="you_must_choose_the_save_path">您必须选择保存路径</string>
+    <string name="usb_permission_request_failed">USB权限请求失败</string>
 
     <string-array name="ble_phy">
         <item>所有PHY</item>
