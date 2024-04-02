@@ -8,17 +8,23 @@ import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import androidx.core.util.size
 import com.kenvix.sensorcollector.databinding.RecordingBthListEntryBinding // 更新此行以匹配你的包名和布局文件名
-import com.kenvix.sensorcollector.databinding.TitleBodyCheckboxListEntryBinding
 import com.kenvix.sensorcollector.utils.parserServiceData
 import com.kenvix.sensorcollector.utils.toHexString
+import kotlinx.serialization.Serializable
 import java.time.LocalTime
 
+@Serializable
+open class BluetoothScannerListItem(
+    var title: String = "",
+    var body: String = "",
+    var isChecked: Boolean = false
+)
 
-data class BluetoothScannerListItem(private val result: ScanResult) :
-    Comparable<BluetoothScannerListItem> {
+data class BluetoothScannerScanResultListItem(private val result: ScanResult) :
+    BluetoothScannerListItem(),
+    Comparable<BluetoothScannerScanResultListItem> {
+
     val time = LocalTime.now()
-    val title: String
-    val body: String
 
     init {
         title = String.format(
@@ -52,14 +58,15 @@ data class BluetoothScannerListItem(private val result: ScanResult) :
     }
 
     override fun equals(other: Any?): Boolean {
-        return other is BluetoothScannerListItem && other.result.device.address == result.device.address
+        return other is BluetoothScannerScanResultListItem && other.result.device.address == result.device.address
     }
 
     override fun hashCode(): Int {
         return result.device.address.hashCode()
     }
 
-    override fun compareTo(other: BluetoothScannerListItem): Int = time.compareTo(other.time)
+    override fun compareTo(other: BluetoothScannerScanResultListItem): Int =
+        time.compareTo(other.time)
 }
 
 class BluetoothScannerListAdapter(
@@ -67,7 +74,6 @@ class BluetoothScannerListAdapter(
     private val items: List<BluetoothScannerListItem>
 ) :
     ArrayAdapter<BluetoothScannerListItem>(context, 0, items) {
-
 
     override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
         val binding = if (convertView == null) {
@@ -78,35 +84,7 @@ class BluetoothScannerListAdapter(
         val item = items[position]
         binding.itemTitle.text = item.title
         binding.itemBody.text = item.body
-
-        return binding.root
-    }
-}
-
-data class TitleBodyCheckboxListItem(val title: String, val body: String, var isChecked: Boolean = false)
-
-class TitleBodyCheckboxListAdapter(
-    context: Context,
-    private val items: List<TitleBodyCheckboxListItem>
-) :
-    ArrayAdapter<TitleBodyCheckboxListItem>(context, 0, items) {
-
-    override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-        val binding = if (convertView == null) {
-            TitleBodyCheckboxListEntryBinding.inflate(LayoutInflater.from(context), parent, false)
-        } else {
-            TitleBodyCheckboxListEntryBinding.bind(convertView)
-        }
-
-        val item = items[position]
-        binding.itemTitle.text = item.title
-
-        binding.itemBody.text = item.body
-        binding.checkBox.isChecked = item.isChecked
-
-        binding.checkBox.setOnCheckedChangeListener { _, isChecked ->
-            item.isChecked = isChecked
-        }
+        binding.itemCheckbox.isChecked = item.isChecked
 
         return binding.root
     }

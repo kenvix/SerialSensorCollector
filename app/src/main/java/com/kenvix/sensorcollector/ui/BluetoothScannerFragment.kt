@@ -38,7 +38,7 @@ class BluetoothScannerFragment : Fragment() {
     private var isIncludeNullNameDevices = false
     private var isIncludeUnknownDevices = false
     private var bthNamePattern: Pattern? = null
-    private val scannedItems = mutableListOf<BluetoothScannerListItem>()
+    private val scannedItems = mutableListOf<BluetoothScannerScanResultListItem>()
     private var blePhy: Int = 0
 
     override fun onCreateView(
@@ -120,7 +120,7 @@ class BluetoothScannerFragment : Fragment() {
                     )
                 }
 
-                val item = BluetoothScannerListItem(result)
+                val item = BluetoothScannerScanResultListItem(result)
                 scannedItems.indexOf(item).let { index ->
                     if (index != -1) {
                         scannedItems[index] = item
