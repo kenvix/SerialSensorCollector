@@ -39,7 +39,6 @@ import com.kenvix.sensorcollector.hardware.vendor.SensorDataParser
 import com.kenvix.sensorcollector.hardware.vendor.WitHardwareDataParser
 import com.kenvix.sensorcollector.services.UsbSerial
 import com.kenvix.sensorcollector.services.UsbSerialRecorderService
-import com.kenvix.sensorcollector.utils.toArray
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -185,8 +184,10 @@ class MainActivity :
                         textView = workingDialog?.findViewById<TextView>(android.R.id.message)
 
                     textView!!.text = getString(R.string.record_activity_info_detailed,
-                        service?.rowsWritten?.toString() ?: "---",
-                        UsbSerial.selectedDevices.joinToString("\n") { it.deviceName })
+                        service?.rowsWrittenTotal?.toString() ?: "---",
+                        service?.rowsWrittenPerDevice?.asSequence()?.map {
+                            "${it.key.deviceName}: ${it.value}"
+                        }?.joinToString("\n") ?: "[ERROR]")
                     delay(1000)
                 }
             }

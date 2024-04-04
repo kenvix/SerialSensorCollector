@@ -25,12 +25,10 @@ import org.apache.poi.ss.usermodel.Sheet
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import java.io.BufferedOutputStream
 import java.io.Closeable
-import java.io.DataInputStream
 import java.io.PrintStream
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
-import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.atomic.AtomicInteger
 
 interface RecordWriter : Closeable {
@@ -42,7 +40,8 @@ interface RecordWriter : Closeable {
     )
 
     fun save()
-    val rowsWritten: Long
+    val rowsWrittenTotal: Long
+    val rowsWrittenPerDevice: Map<UsbDevice, Long>
 }
 
 class CsvRecordWriter(val context: Context, val filePath: Uri) :
@@ -59,8 +58,11 @@ class CsvRecordWriter(val context: Context, val filePath: Uri) :
         java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd_HH_mm_ss")
 
     private data class SheetPos(val uri: Uri, val stream: PrintStream, var pos: Int)
-    override var rowsWritten: Long = 0
+    override var rowsWrittenTotal: Long = 0
         private set
+    override val rowsWrittenPerDevice: Map<UsbDevice, Long>
+        get() = deviceToStream.mapValues { it.value.pos.toLong() }
+
     private val writeQueue = Channel<Any>(65535)
     private lateinit var writeJob: Job
 
@@ -109,7 +111,7 @@ class CsvRecordWriter(val context: Context, val filePath: Uri) :
         // Intended: To avoid yield new objects to avoid GC Pause
         writeQueue.send(pos.stream)
         writeQueue.send(s)
-        rowsWritten++
+        rowsWrittenTotal++
     }
 
     override fun save() {
@@ -142,8 +144,10 @@ class ExcelRecordWriter(val context: Context, val filePath: Uri) :
         })
     }
 
-    override var rowsWritten: Long = 0
+    override var rowsWrittenTotal: Long = 0
         private set
+    override val rowsWrittenPerDevice: Map<UsbDevice, Long>
+        get() = deviceToSheet.mapValues { it.value.pos.toLong() }
 
     private val formatter =
         java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSS")
@@ -207,7 +211,7 @@ class ExcelRecordWriter(val context: Context, val filePath: Uri) :
                 ZonedDateTime.ofInstant(currentTime, zone).format(formatter)
             )
         }
-        rowsWritten++
+        rowsWrittenTotal++
     }
 
     override fun save() {

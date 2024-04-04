@@ -27,7 +27,7 @@
     <string name="menu_slideshow">幻灯片</string>
 
     <string name="nav_header_title">Android Studio</string>
-    <string name="nav_header_subtitle">android.studio@android.com</string>
+    <string name="nav_header_subtitle">Version.2.0 by kenvix</string>
     <string name="nav_header_desc">导航头部</string>
 
     <string name="lorem_ipsum">Lorem ipsum</string>

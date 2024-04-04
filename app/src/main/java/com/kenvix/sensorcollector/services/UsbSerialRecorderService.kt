@@ -12,6 +12,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.hardware.usb.UsbDevice
 import android.net.Uri
 import android.os.Binder
 import android.os.Build
@@ -30,15 +31,12 @@ import com.kenvix.sensorcollector.utils.getFileSize
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import java.util.HashSet
 
 class UsbSerialRecorderService :
     Service(),
@@ -50,14 +48,17 @@ class UsbSerialRecorderService :
 
     var uri: Uri? = null
     private var outputFormat: String = "xlsx"
-    private var recordWriter: RecordWriter? = null
+    var recordWriter: RecordWriter? = null
+        private set
     private var dataParser: SensorDataParser? = null
 
     // Binder given to clients
     private val binder = LocalBinder()
     private var workerJob: Job? = null
-    val rowsWritten: Long
-        get() = recordWriter?.rowsWritten ?: 0
+    val rowsWrittenTotal: Long
+        get() = recordWriter?.rowsWrittenTotal ?: 0
+    val rowsWrittenPerDevice: Map<UsbDevice, Long>
+        get() = recordWriter?.rowsWrittenPerDevice ?: emptyMap()
 
     @Volatile
     var isRecording: Boolean = false
