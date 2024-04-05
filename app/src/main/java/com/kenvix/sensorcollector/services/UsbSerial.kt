@@ -31,6 +31,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.future.await
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
@@ -41,6 +42,10 @@ import kotlinx.coroutines.withContext
 import java.io.BufferedInputStream
 import java.io.DataInputStream
 import java.io.EOFException
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.Executors
+import java.util.concurrent.Future
+import java.util.concurrent.TimeoutException
 import kotlin.coroutines.resume
 
 
@@ -49,8 +54,10 @@ object UsbSerial : AutoCloseable,
     private lateinit var usbManager: UsbManager
     private var permissionContinuation: CancellableContinuation<Boolean>? = null
     val opMutex = Mutex()
-    val openedSerialDevices: MutableMap<UsbDevice, Pair<UsbSerialDevice, Job>> =
+    val openedSerialDevices: MutableMap<UsbDevice, OpenedSerialDevice> =
         mutableMapOf()
+
+    data class OpenedSerialDevice(val serial: UsbSerialDevice, val connection: UsbDeviceConnection, val job: Job)
 
     private const val ACTION_USB_PERMISSION = "com.kenvix.sensorcollector.USB_PERMISSION"
 
@@ -98,15 +105,35 @@ object UsbSerial : AutoCloseable,
         delimiter: Byte,
         onReceived: suspend (UsbDevice, UsbSerialDevice, SensorData) -> Unit
     ): Job {
+        Log.d("UsbSerial", "Starting serial for ${device.deviceName} [1/6]: Opening USB connection")
         val usbConnection: UsbDeviceConnection = usbManager.openDevice(device)
         var job: Job
 
+        Log.d("UsbSerial", "Starting serial for ${device.deviceName} [2/6]: Create serial device")
         val serial: UsbSerialDevice =
             UsbSerialDevice.createUsbSerialDevice(device, usbConnection).apply {
-                syncOpen()
+                Log.d("UsbSerial", "Starting serial for ${device.deviceName} [3/6]: Open serial device")
+
+                val future = CompletableFuture.runAsync {
+                    if (!syncOpen()) {
+                        Log.e("UsbSerial", "Failed to open serial device ${device.deviceName}")
+                        throw IllegalStateException("Failed to open serial device ${device.deviceName}")
+                    }
+                }
+
+                try {
+                    future.get(1000, java.util.concurrent.TimeUnit.MILLISECONDS)
+                } catch (e: TimeoutException) {
+                    Log.e("UsbSerial", "Timed out to open serial device ${device.deviceName} syncOpen() failed", e)
+                    throw IllegalStateException("Timed out to open open serial device ${device.deviceName} syncOpen() failed: $e", e)
+                }
+
+                Log.d("UsbSerial", "Starting serial for ${device.deviceName} [4/6]: Prepare serial device")
                 dataParser.prepareSerialDevice(device, this)
 
+                Log.d("UsbSerial", "Starting serial for ${device.deviceName} [5/6]: Start data receive job")
                 job = launch(Dispatchers.IO + coroutineContext) {
+                    Log.d("UsbSerial", "Starting serial for ${device.deviceName} [6/6]: Start data stream")
                     val inputStream = DataInputStream(BufferedInputStream(inputStream))
                     try {
                         while (isActive) {
@@ -115,6 +142,8 @@ object UsbSerial : AutoCloseable,
                                 dataParser.onDataInput(device, this@apply, inputStream, onReceived)
                             }
                         }
+
+                        Log.d("UsbSerial", "Receiver finished: ${device.deviceName}")
                     } catch (_: EOFException) {
                         Log.i("UsbSerial", "EOF of device ${device.deviceName}")
                     } catch (e: CancellationException) {
@@ -124,7 +153,7 @@ object UsbSerial : AutoCloseable,
                 }
             }
 
-        openedSerialDevices[device] = Pair(serial, job)
+        openedSerialDevices[device] = OpenedSerialDevice(serial, connection = usbConnection, job)
         return job
     }
 
@@ -197,9 +226,15 @@ object UsbSerial : AutoCloseable,
         val iterator = openedSerialDevices.iterator()
         while (iterator.hasNext()) {
             val entry = iterator.next()
-            val (device, job) = entry.value
-            device.close()
+            val (device, conn, job) = entry.value
+            Log.d("UsbSerial", "Stopping serial for ${entry.key.deviceName} [1/4]: Canceling job [${job.key}")
             job.cancel()
+            Log.d("UsbSerial", "Stopping serial for ${entry.key.deviceName} [2/4]: Closing serial device")
+            device.inputStream.close()
+            device.outputStream.close()
+            device.syncClose()
+            Log.d("UsbSerial", "Stopping serial for ${entry.key.deviceName} [3/4]: Closing USB connection")
+            conn.close()
             iterator.remove()
         }
     }

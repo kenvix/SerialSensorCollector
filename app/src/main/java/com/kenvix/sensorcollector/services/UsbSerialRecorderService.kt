@@ -173,7 +173,7 @@ class UsbSerialRecorderService :
             } catch (e: CancellationException) {
                 Log.i("UsbSerialRecorderService", "Worker job stopped (canceled)")
                 throw e
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 Log.e("UsbSerialRecorderService", "Error while recording", e)
                 Toast.makeText(
                     this@UsbSerialRecorderService,
@@ -195,7 +195,7 @@ class UsbSerialRecorderService :
         if (!isRecording) return
         opMutex.withLock {
             if (!isRecording) return
-            Log.i("UsbSerialRecorderService", "Service stopping (invoker request)")
+            Log.i("UsbSerialRecorderService", "Stopping recording [1/6]: Service stopping (invoker request)")
 
             // 创建更新的通知内容为“正在保存”
             val updatedNotification = NotificationCompat.Builder(this, CHANNEL_ID)
@@ -211,9 +211,13 @@ class UsbSerialRecorderService :
                 workerJob?.cancel()
                 withContext(Dispatchers.IO) {
                     // 执行阻塞操作
+                    Log.d("UsbSerialRecorderService", "Stopping recording [2/6]: Closing Serial")
                     UsbSerial.stopAllSerial()
+                    Log.d("UsbSerialRecorderService", "Stopping recording [3/6]: Waiting for USB Receiver to finish")
                     workerJob?.join()
+                    Log.d("UsbSerialRecorderService", "Stopping recording [4/6]: Waiting for USB Receiver to finish")
                     recordWriter?.close()
+                    Log.d("UsbSerialRecorderService", "Stopping recording [5/6]: Cleaning")
 
                     if (outputFormat == "xlsx") {
                         this@UsbSerialRecorderService.getFileSize(uri!!).also {
@@ -241,6 +245,8 @@ class UsbSerialRecorderService :
                     this@UsbSerialRecorderService,
                     "Recording successfully saved to $uri", Toast.LENGTH_LONG
                 ).show()
+
+                System.gc()
             } catch (e: Exception) {
                 Log.e("UsbSerialRecorderService", "Error while saving recordings", e)
                 Toast.makeText(
@@ -256,9 +262,13 @@ class UsbSerialRecorderService :
                 isRecording = false
                 val intent = Intent("com.kenvix.sensorcollector.ACTION_WORKER_SERVICE_STOPPED")
                 sendBroadcast(intent)
+
+                Log.i("UsbSerialRecorderService", "Stopping recording [5/6]: Service stopped. Invoking stopSelf")
                 stopSelf()
             }
         }
+
+        Log.d("UsbSerialRecorderService", "Stopping recording [6/6]: Lock released")
     }
 
     override fun onDestroy() {

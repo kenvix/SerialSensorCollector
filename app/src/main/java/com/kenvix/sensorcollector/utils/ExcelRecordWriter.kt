@@ -61,7 +61,7 @@ class CsvRecordWriter(val context: Context, val filePath: Uri) :
         val uri: Uri,
         val stream: PrintStream,
         var pos: Int,
-        val writeQueue: Channel<String> = Channel(32767),
+        val writeQueue: Channel<String> = Channel(WRITER_QUEUE_SIZE),
     ) {
         lateinit var writeJob: Job
     }
@@ -70,6 +70,10 @@ class CsvRecordWriter(val context: Context, val filePath: Uri) :
         private set
     override val rowsWrittenPerDevice: Map<UsbDevice, Long>
         get() = deviceToStream.mapValues { it.value.pos.toLong() }
+
+    companion object {
+        const val WRITER_QUEUE_SIZE = 16384
+    }
 
     override fun setDeviceList(usbDevice: Collection<UsbDevice>) {
         // Make directory
@@ -128,8 +132,9 @@ class CsvRecordWriter(val context: Context, val filePath: Uri) :
             pair.writeQueue.close()
             pair.stream.close()
         }
-    }
 
+        deviceToStream.clear()
+    }
 }
 
 class ExcelRecordWriter(val context: Context, val filePath: Uri) :
