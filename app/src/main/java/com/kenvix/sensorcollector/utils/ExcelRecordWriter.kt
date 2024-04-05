@@ -57,14 +57,19 @@ class CsvRecordWriter(val context: Context, val filePath: Uri) :
     private val dirNameFormatter =
         java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd_HH_mm_ss")
 
-    private data class SheetPos(val uri: Uri, val stream: PrintStream, var pos: Int)
+    private data class SheetPos(
+        val uri: Uri,
+        val stream: PrintStream,
+        var pos: Int,
+        val writeQueue: Channel<String> = Channel(32767),
+    ) {
+        lateinit var writeJob: Job
+    }
+
     override var rowsWrittenTotal: Long = 0
         private set
     override val rowsWrittenPerDevice: Map<UsbDevice, Long>
         get() = deviceToStream.mapValues { it.value.pos.toLong() }
-
-    private val writeQueue = Channel<Any>(65535)
-    private lateinit var writeJob: Job
 
     override fun setDeviceList(usbDevice: Collection<UsbDevice>) {
         // Make directory
@@ -84,12 +89,11 @@ class CsvRecordWriter(val context: Context, val filePath: Uri) :
             s.println("No,AccX,AccY,AccZ,GyroX,GyroY,GyroZ,AngleX,AngleY,AngleZ,TimeStamp,LocalTime")
         }
 
-        writeJob = launch(Dispatchers.IO) {
-            // Intended: To avoid yield new objects to avoid GC Pause
-            while (isActive) {
-                val stream = writeQueue.receive() as PrintStream
-                val s = writeQueue.receive() as String
-                stream.println(s)
+        deviceToStream.forEach { (device, pair) ->
+            pair.writeJob = launch(Dispatchers.IO) {
+                for (line in pair.writeQueue) {
+                    pair.stream.println(line)
+                }
             }
         }
     }
@@ -109,8 +113,7 @@ class CsvRecordWriter(val context: Context, val filePath: Uri) :
                 "${Instant.now().toEpochMilli()},\"${ZonedDateTime.now().format(formatter)}\""
         // pos.stream.println(s)
         // Intended: To avoid yield new objects to avoid GC Pause
-        writeQueue.send(pos.stream)
-        writeQueue.send(s)
+        pos.writeQueue.send(s)
         rowsWrittenTotal++
     }
 
@@ -121,9 +124,8 @@ class CsvRecordWriter(val context: Context, val filePath: Uri) :
     }
 
     override fun close() {
-        writeQueue.close()
-        save()
         deviceToStream.forEach { (device, pair) ->
+            pair.writeQueue.close()
             pair.stream.close()
         }
     }

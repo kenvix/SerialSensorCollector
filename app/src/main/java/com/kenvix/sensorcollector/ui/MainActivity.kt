@@ -177,7 +177,7 @@ class MainActivity :
                     }
                 }.show()
             workingDialogUpdateJob = launch(Dispatchers.Main) {
-                delay(1000)
+                delay(256)
                 var textView: TextView? = null
                 while (isActive && workingDialog?.isShowing == true) {
                     if (textView == null)
@@ -188,7 +188,7 @@ class MainActivity :
                         service?.rowsWrittenPerDevice?.asSequence()?.map {
                             "${it.key.deviceName}: ${it.value}"
                         }?.joinToString("\n") ?: "[ERROR]")
-                    delay(1000)
+                    delay(256)
                 }
             }
         }
