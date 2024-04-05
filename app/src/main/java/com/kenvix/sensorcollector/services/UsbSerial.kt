@@ -28,9 +28,11 @@ import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
@@ -260,52 +262,48 @@ object UsbSerial : AutoCloseable,
         return usbManager.hasPermission(device)
     }
 
-    private fun stopAllSerialUnsafe() {
-        //close and remove from openedSerialDevices
-        val iterator = openedSerialDevices.iterator()
-        while (iterator.hasNext()) {
-            val entry = iterator.next()
-            val (device, conn, job) = entry.value
-            Log.d(
-                "UsbSerial",
-                "Stopping serial for ${entry.key.deviceName} [1/4]: Canceling job [${job.key}"
-            )
-            job.cancel()
-
-            if (!isKeepStreamOpenAfterRecordingClosed) {
-                Log.d(
-                    "UsbSerial",
-                    "Stopping serial for ${entry.key.deviceName} [2/4]: Closing serial device"
-                )
-                device.inputStream.close()
-                device.outputStream.close()
-                device.syncClose()
-                Log.d(
-                    "UsbSerial",
-                    "Stopping serial for ${entry.key.deviceName} [3/4]: Closing USB connection"
-                )
-                conn.close()
-            } else {
-                Log.d(
-                    "UsbSerial",
-                    "Stopping serial for ${entry.key.deviceName} [3/4]: Keep stream open. Ignore closing"
-                )
-                val closedSerialDevice = ClosedSerialDevice(device, conn)
-                closedSerialDevices[entry.key] = closedSerialDevice
-            }
-
-            iterator.remove()
-        }
-    }
-
     suspend fun stopAllSerial() {
         opMutex.withLock {
-            stopAllSerialUnsafe()
+            //close and remove from openedSerialDevices
+            val iterator = openedSerialDevices.iterator()
+            while (iterator.hasNext()) {
+                val entry = iterator.next()
+                val (device, conn, job) = entry.value
+                Log.d(
+                    "UsbSerial",
+                    "Stopping serial for ${entry.key.deviceName} [1/4]: Canceling job [${job.key}"
+                )
+                job.cancelAndJoin()
+
+                if (!isKeepStreamOpenAfterRecordingClosed) {
+                    Log.d(
+                        "UsbSerial",
+                        "Stopping serial for ${entry.key.deviceName} [2/4]: Closing serial device"
+                    )
+                    device.inputStream.close()
+                    device.outputStream.close()
+                    device.syncClose()
+                    Log.d(
+                        "UsbSerial",
+                        "Stopping serial for ${entry.key.deviceName} [3/4]: Closing USB connection"
+                    )
+                    conn.close()
+                } else {
+                    Log.d(
+                        "UsbSerial",
+                        "Stopping serial for ${entry.key.deviceName} [3/4]: Keep stream open. Ignore closing"
+                    )
+                    val closedSerialDevice = ClosedSerialDevice(device, conn)
+                    closedSerialDevices[entry.key] = closedSerialDevice
+                }
+
+                iterator.remove()
+            }
         }
     }
 
     @Synchronized
     override fun close() {
-        stopAllSerialUnsafe()
+        runBlocking { stopAllSerial() }
     }
 }
