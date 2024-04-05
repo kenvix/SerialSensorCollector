@@ -162,6 +162,10 @@ class RecorderFragment : Fragment() {
             }
         }
 
+        binding.keepsStreamOpenEvenAfterRecordingStopped.setOnCheckedChangeListener { buttonView, isChecked ->
+            UsbSerial.isKeepStreamOpenAfterRecordingClosed = isChecked
+        }
+
         binding.buttonStartRecoding.setOnClickListener {
             try {
                 activity.launch(Dispatchers.Main) {
