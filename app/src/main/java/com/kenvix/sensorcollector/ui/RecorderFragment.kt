@@ -1,5 +1,7 @@
 package com.kenvix.sensorcollector.ui
 
+import android.app.NotificationManager
+import android.content.Context
 import android.content.Intent
 import android.hardware.usb.UsbDevice
 import android.net.Uri
@@ -43,7 +45,6 @@ class RecorderFragment : Fragment() {
     private var safContinuation: CancellableContinuation<Uri?>? = null
     private lateinit var safCreateFileLauncherXlsx: ActivityResultLauncher<String>
     private lateinit var safCreateFileLauncherCsv: ActivityResultLauncher<Uri?>
-
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,

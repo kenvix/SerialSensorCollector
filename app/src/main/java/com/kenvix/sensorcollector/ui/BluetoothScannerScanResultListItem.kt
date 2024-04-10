@@ -20,7 +20,7 @@ open class BluetoothScannerListItem(
     var isChecked: Boolean = false
 )
 
-data class BluetoothScannerScanResultListItem(private val result: ScanResult) :
+data class BluetoothScannerScanResultListItem(private val result: ScanResult, private val parsedResults: List<Any?>? = null) :
     BluetoothScannerListItem(),
     Comparable<BluetoothScannerScanResultListItem> {
 
@@ -35,14 +35,22 @@ data class BluetoothScannerScanResultListItem(private val result: ScanResult) :
         )
 
         body = StringBuilder().let {
+            var index = 0
             result.scanRecord?.serviceData?.forEach { (uuid, bytes) ->
-                parserServiceData(uuid.toString(), bytes).let { data ->
+                run {
+                    if (parsedResults == null)
+                        parserServiceData(uuid.toString(), bytes)
+                    else
+                        parsedResults[index]
+                }.let { data ->
                     if (data != null) {
                         it.append(data.toString()).append("\n")
                     } else {
                         it.append(String.format("%s: %s\n", uuid, bytes.toHexString()))
                     }
                 }
+
+                index++
             }
 
             it.append("Packet ${result.scanRecord?.bytes?.size ?: 0}B, ")

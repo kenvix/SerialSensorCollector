@@ -56,6 +56,7 @@
 
     <string name="sensor_alarm_tool">传感器警报工具</string>
     <string name="keeps_stream_open_even_after_recording_stopped">在停止录制后也保持流打开</string>
+    <string name="temperature_warning_critical_level">温度警告：极其严重</string>
 
     <string-array name="ble_phy">
         <item>所有PHY</item>

@@ -62,6 +62,15 @@
                     android:textSize="15sp"
                     android:id="@+id/show_unnamed_devices"
                     android:text="@string/show_unnamed" />
+
+            <CheckBox
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:layout_gravity="end"
+                    android:checked="false"
+                    android:textSize="15sp"
+                    android:id="@+id/enable_alert"
+                    android:text="@string/enable_alert" />
         </LinearLayout>
 
         <com.google.android.material.textfield.TextInputLayout

@@ -37,7 +37,7 @@
     <string name="about">About</string>
     <string name="menu_bluetooth_beacon_scanner">Bluetooth Beacon Scanner</string>
     <string name="menu_usb_serial_sensor_recorder">USB Serial Sensor Recorder</string>
-    <string name="scan_settings">Scan Settings</string>
+    <string name="scan_settings">Settings</string>
     <string name="ble_only">BLE Only</string>
     <string name="quick_scan">Fast Scan</string>
     <string name="show_unnamed">Show Unnamed</string>
@@ -55,6 +55,8 @@
     <string name="usb_permission_request_failed">USB Permission Request Failed</string>
     <string name="sensor_alarm_tool">Sensor Alarm Tool</string>
     <string name="keeps_stream_open_even_after_recording_stopped">Keeps stream open even after recording stopped</string>
+    <string name="temperature_warning_critical_level">Temperature warning: critical level</string>
+    <string name="enable_alert">Enable Alert</string>
 
     <string-array name="ble_phy">
 <!--        <item>All PHY</item>-->
