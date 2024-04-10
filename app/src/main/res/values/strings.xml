@@ -59,12 +59,30 @@
     <string name="enable_alert">Enable Alert</string>
 
     <string-array name="ble_phy">
-<!--        <item>All PHY</item>-->
-<!--        <item>LE 1M</item>-->
-<!--        <item>LE 2M</item>-->
-<!--        <item>LE Coded S2/S8</item>-->
+        <!--        <item>All PHY</item>-->
+        <!--        <item>LE 1M</item>-->
+        <!--        <item>LE 2M</item>-->
+        <!--        <item>LE Coded S2/S8</item>-->
         <item>All PHY</item>
         <item>LE 1M</item>
         <item>LE Coded</item>
     </string-array>
+    <!-- Strings related to login -->
+    <string name="prompt_email">Email</string>
+    <string name="prompt_password">Password</string>
+    <string name="action_sign_in">Sign in or register</string>
+    <string name="action_sign_in_short">Sign in</string>
+    <string name="welcome">"Welcome!"</string>
+    <string name="invalid_username">Not a valid username</string>
+    <string name="invalid_password">Password must be >5 characters</string>
+    <string name="login_failed">"Login failed"</string>
+    <string name="wlan_name_ssid">WLAN Name (SSID)</string>
+    <string name="advanced_netowrk_settings">Advanced Netowrk Settings</string>
+    <string name="basic_wlan_information">Basic WLAN Information</string>
+    <string name="device_information">Device Information</string>
+    <string name="mac_address">MAC Address</string>
+    <string name="device_name">Device Name</string>
+    <string name="signal_strength">Signal Strength</string>
+    <string name="device_configuration_password">Device Configuration Password</string>
+    <string name="enable_dhcp">Enable DHCP</string>
 </resources>

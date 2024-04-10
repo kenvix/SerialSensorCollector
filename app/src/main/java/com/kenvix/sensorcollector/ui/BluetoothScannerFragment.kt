@@ -32,6 +32,7 @@ import java.util.regex.Pattern
 /**
  * A simple [Fragment] subclass as the second destination in the navigation.
  */
+@Suppress("SameParameterValue")
 class BluetoothScannerFragment : Fragment() {
 
     private var _binding: FragmentBluetoothScanBinding? = null
