@@ -1,4 +1,4 @@
-package com.kenvix.sensorcollector.ui.ui.login
+package com.kenvix.sensorcollector.ui.login
 
 /**
  * Data validation state of the login form.

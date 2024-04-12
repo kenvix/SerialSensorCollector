@@ -1,4 +1,4 @@
-package com.kenvix.sensorcollector.ui.ui.login
+package com.kenvix.sensorcollector.ui.login
 
 /**
  * User details post authentication that is exposed to the UI

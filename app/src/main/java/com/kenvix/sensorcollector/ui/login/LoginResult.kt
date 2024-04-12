@@ -1,4 +1,6 @@
-package com.kenvix.sensorcollector.ui.ui.login
+package com.kenvix.sensorcollector.ui.login
+
+import com.kenvix.sensorcollector.ui.login.LoggedInUserView
 
 /**
  * Authentication result : success (user details) or error message.

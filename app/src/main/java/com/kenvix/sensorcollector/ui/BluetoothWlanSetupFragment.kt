@@ -1,4 +1,4 @@
-package com.kenvix.sensorcollector.ui.ui.login
+package com.kenvix.sensorcollector.ui
 
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
@@ -11,13 +11,13 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
-import android.widget.Button
-import android.widget.EditText
-import android.widget.ProgressBar
 import android.widget.Toast
+import com.kenvix.sensorcollector.R
 import com.kenvix.sensorcollector.databinding.FragmentBluetoothWlanSetupBinding
 
-import com.kenvix.sensorcollector.ui.R
+import com.kenvix.sensorcollector.ui.login.LoggedInUserView
+import com.kenvix.sensorcollector.ui.login.LoginViewModel
+import com.kenvix.sensorcollector.ui.login.LoginViewModelFactory
 
 class BluetoothWlanSetupFragment : Fragment() {
 
@@ -44,7 +44,7 @@ class BluetoothWlanSetupFragment : Fragment() {
         loginViewModel = ViewModelProvider(this, LoginViewModelFactory())
             .get(LoginViewModel::class.java)
 
-        val usernameEditText = binding.username
+        val ssidEditText = binding.ssid
         val passwordEditText = binding.password
         val loginButton = binding.login
         val loadingProgressBar = binding.loading
@@ -56,7 +56,7 @@ class BluetoothWlanSetupFragment : Fragment() {
                 }
                 loginButton.isEnabled = loginFormState.isDataValid
                 loginFormState.usernameError?.let {
-                    usernameEditText.error = getString(it)
+                    ssidEditText.error = getString(it)
                 }
                 loginFormState.passwordError?.let {
                     passwordEditText.error = getString(it)
@@ -86,17 +86,17 @@ class BluetoothWlanSetupFragment : Fragment() {
 
             override fun afterTextChanged(s: Editable) {
                 loginViewModel.loginDataChanged(
-                    usernameEditText.text.toString(),
+                    ssidEditText.text.toString(),
                     passwordEditText.text.toString()
                 )
             }
         }
-        usernameEditText.addTextChangedListener(afterTextChangedListener)
+        ssidEditText.addTextChangedListener(afterTextChangedListener)
         passwordEditText.addTextChangedListener(afterTextChangedListener)
         passwordEditText.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_DONE) {
                 loginViewModel.login(
-                    usernameEditText.text.toString(),
+                    ssidEditText.text.toString(),
                     passwordEditText.text.toString()
                 )
             }
@@ -106,7 +106,7 @@ class BluetoothWlanSetupFragment : Fragment() {
         loginButton.setOnClickListener {
             loadingProgressBar.visibility = View.VISIBLE
             loginViewModel.login(
-                usernameEditText.text.toString(),
+                ssidEditText.text.toString(),
                 passwordEditText.text.toString()
             )
         }

@@ -1,13 +1,12 @@
-package com.kenvix.sensorcollector.ui.ui.login
+package com.kenvix.sensorcollector.ui.login
 
+import android.util.Patterns
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import android.util.Patterns
+import com.kenvix.sensorcollector.R
 import com.kenvix.sensorcollector.ui.data.LoginRepository
 import com.kenvix.sensorcollector.ui.data.Result
-
-import com.kenvix.sensorcollector.ui.R
 
 class LoginViewModel(private val loginRepository: LoginRepository) : ViewModel() {
 
