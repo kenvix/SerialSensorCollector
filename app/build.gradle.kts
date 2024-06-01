@@ -13,8 +13,8 @@ android {
         applicationId = "com.kenvix.sensorcollector"
         minSdk = 30
         targetSdk = 34
-        versionCode = 4
-        versionName = "2.2"
+        versionCode = 5
+        versionName = "2.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -77,4 +77,12 @@ dependencies {
     // https://mvnrepository.com/artifact/org.jetbrains.kotlinx/kotlinx-coroutines-jdk8
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.8.0")
 
+
+    ///// ONNX MACHINE LEARNING RUNTIME /////
+    // https://mvnrepository.com/artifact/com.microsoft.onnxruntime/onnxruntime-android
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.17.3")
+    // https://mvnrepository.com/artifact/org.jetbrains.kotlin/kotlin-android-extensions-runtime
+    implementation("org.jetbrains.kotlin:kotlin-android-extensions-runtime:1.9.23")
+
+    /////////////////////////////////////////
 }
